@@ -1,20 +1,25 @@
+const sendMail = require('../config/emailConfig')
+
 const Withdrawal = require('../models').withdrawals
 const Notification = require('../models').notifications
 const Wallet = require('../models').wallets
+const User = require('../models').users
 
 exports.MakeWithdrawal = async (req, res) => {
     try {
 
-        const { amount, wallet_address, crypto, wthuser } = req.body
-        if (!amount || !wallet_address || !crypto || !wthuser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, wallet_address, crypto, network, wthuser } = req.body
+        if (!amount || !wallet_address || !crypto || !network || !wthuser) return res.json({ status: 404, msg: `Incomplete request found` })
 
 
         await Withdrawal.create({
             amount,
             wallet_address,
             crypto,
+            network,
             user: req.user,
         })
+
 
         await Notification.create({
             user: req.user,
@@ -24,11 +29,18 @@ exports.MakeWithdrawal = async (req, res) => {
             URL_state: 1
         })
 
+        const admin = await User.findOne({ where: { role: 'admin' } })
         await Notification.create({
-            user: 1,
+            user: admin.id,
             title: `withdrawal alert`,
-            content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`
+            content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`,
+            role: 'admin'
         })
+
+        const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
+
+        await sendMail({ from: 'support@secureinvest.org', subject: 'Withdrawal Alert', to: admin.email, html: content, text: content })
+
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })

@@ -6,6 +6,7 @@ module.exports = (sequelize, DataTypes) => {
         read: {type: DataTypes.STRING, defaultValue: 'false'},
         status: {type: DataTypes.STRING, allowNull: true}, 
         URL: {type: DataTypes.STRING, allowNull: true}, 
-        URL_state: {type: DataTypes.INTEGER, allowNull: true},     
+        URL_state: {type: DataTypes.INTEGER, allowNull: true},
+        role: {type: DataTypes.STRING, allowNull: true},      
     })
 }

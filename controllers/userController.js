@@ -78,12 +78,17 @@ exports.CreateAccount = async (req, res) => {
             URL_state: 0
         })
 
+        const admin = await User.findOne({ where: { role: 'admin' } })
         await Notification.create({
-            user: 1,
+            user: admin.id,
             title: `${username} joins AI Algo`,
             content: `Hello Admin, you have a new user as ${full_name} joins the AI Algorithm trading system.`,
-            admin: 'sign ups'
+            role: 'admin'
         })
+
+        const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
+
+        await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
 
         await imageData.mv(`${filePath}/${imageName}`)
 
@@ -138,6 +143,11 @@ exports.ValidateOtp = async (req, res) => {
 
 
         const token = jwt.sign({ id: findAccount.id, role: findAccount.role }, process.env.JWT_SECRET, { expiresIn: '3h' })
+
+        const content = `<div font-size: 1rem;>Hello ${findAccount.full_name}, welcome to the AI Algo trading system where we focus on making cryptocurrency trading easy for everyone, get started by making your first deposit.</div> `
+
+        await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: findAccount.email, html: content, text: content })
+
 
         return res.json({ status: 200, msg: findAccount, token })
     } catch (error) {
@@ -380,6 +390,19 @@ exports.DeleteAcount = async (req, res) => {
         if (ups) {
             await ups.destroy()
         }
+
+        const admin = await User.findOne({ where: { role: 'admin' } })
+        await Notification.create({
+            user: admin.id,
+            title: `${user.username} leaves AI Algo`,
+            content: `Hello Admin, ${user.full_name} permanently deletes account on the AI Algorithm trading system.`,
+            role: 'admin'
+        })
+
+        const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
+
+        await sendMail({ from: 'support@secureinvest.org', subject: 'User Leaves AI Algo', to: admin.email, html: emailcontent, text: emailcontent })
+
 
         await user.destroy()
 

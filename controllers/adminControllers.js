@@ -58,9 +58,9 @@ exports.UpdateDeposits = async (req, res) => {
                 wallet.total_deposit += deposit.amount
                 await wallet.save()
 
-                // const content = `<div font-size: 1rem;>Hello ${deposituser.username}, your deposit of $${deposit.amount} for ${deposit.trading_plan} has been confirmed, your trading on this investment begins now.</div> `
+                const content = `<div font-size: 1rem;>Hello ${deposituser.username}, your deposit of $${deposit.amount} for ${deposit.trading_plan} has been confirmed, your trading on this investment begins now.</div> `
 
-                // await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Confirmation', to: deposituser.email, html: content, text: content })
+                await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Confirmation', to: deposituser.email, html: content, text: content })
             }
         }
 
@@ -75,9 +75,9 @@ exports.UpdateDeposits = async (req, res) => {
                     URL_state: 0
                 })
 
-                // const content = `<div font-size: 1rem;>Hello ${deposituser.username}, your profits generated for the investment of $${deposit.amount} ${deposit.trading_plan} has been completed, you can now succesfully claim to your wallet.</div> `
+                const content = `<div font-size: 1rem;>Hello ${deposituser.username}, your profits generated for the investment of $${deposit.amount} ${deposit.trading_plan} has been completed, you can now succesfully claim to your wallet.</div> `
 
-                // await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Confirmation', to: deposituser.email, html: content, text: content })
+                await sendMail({ from: 'support@secureinvest.org', subject: 'Profit Completed', to: deposituser.email, html: content, text: content })
             }
         }
 
@@ -269,5 +269,77 @@ exports.GetUserTotalInvestment = async (req, res) => {
 
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.AllWithdrawals = async (req, res) => {
+    try {
+        const withdrawals = await Withdrawal.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'wthuser',
+                    attributes: {
+                        exclude: ['password', 'createdAt', 'updatedAt', 'role']
+                    }
+                },
+            ],
+
+            order: [['createdAt', 'DESC']]
+        })
+        return res.json({ status: 200, msg: withdrawals })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.UpdateWithdrawals = async (req, res) => {
+    try {
+        const { user, status, withdrawal_id } = req.body
+
+        const withdrawaluser = await User.findOne({ where: { id: user } })
+        if (!withdrawaluser) return res.json({ status: 400, msg: 'Withdrawal user not found' })
+        const withdrawal = await Withdrawal.findOne({ where: { id: withdrawal_id } })
+        if (!withdrawal) return res.json({ status: 400, msg: 'Withdrawal not found' })
+
+        if (withdrawal.status !== 'confirmed') {
+
+            if (status === 'confirmed') {
+
+                await Notification.create({
+                    user: user,
+                    title: `withdrawal confirmed`,
+                    content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been confirmed.`,
+                    URL: 'withdrawal',
+                    URL_state: 1
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${withdrawaluser.username}, your withdrawal of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address} has been confirmed.</div> `
+
+                await sendMail({ from: 'support@secureinvest.org', subject: 'Withdrawal Confirmation', to: withdrawaluser.email, html: content, text: content })
+            }
+        }
+
+        withdrawal.status = status
+        await withdrawal.save()
+
+        const allwithdrawals = await Withdrawal.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'wthuser',
+                    attributes: {
+                        exclude: ['password', 'createdAt', 'updatedAt', 'role']
+                    }
+                },
+            ],
+
+            order: [['createdAt', 'DESC']]
+        })
+
+        return res.json({status: 200, msg: allwithdrawals})
+
+    } catch (error) {
+        return res.json({ status: 200, msg: error.message })
     }
 }

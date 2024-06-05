@@ -34,10 +34,10 @@ exports.CreateDeposit = async (req, res) => {
                 bonus: 0,
             })
 
-            // const content = `<div font-size: 1rem;>Admin, ${deposituser} just made a deposit of $${amount} for ${trading_plan} with ${crypto}, please confirm transaction.</div> `
+            const content = `<div font-size: 1rem;>Admin, ${deposituser} just made a deposit of $${amount} for ${trading_plan} with ${crypto}, please confirm transaction.</div> `
 
-            // const admin = await User.findOne({ where: { role: 'admin' } })
-            // await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Alert', to: admin.email, html: content, text: content })
+            const admin = await User.findOne({ where: { role: 'admin' } })
+            await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Alert', to: admin.email, html: content, text: content })
         }
         if (from === 'wallet balance') {
             await Deposit.create({
@@ -77,10 +77,12 @@ exports.CreateDeposit = async (req, res) => {
                 URL_state: 1
             })
 
+            const admin = await User.findOne({ where: { role: 'admin' } })
             await Notification.create({
-                user: 1,
+                user: admin.id,
                 title: `deposit alert`,
-                content: `Hello Admin, ${deposituser} just made a deposit of $${amount} for ${trading_plan}, kindly confirm transaction so trading can begin.`
+                content: `Hello Admin, ${deposituser} just made a deposit of $${amount} for ${trading_plan}, kindly confirm transaction so trading can begin.`,
+                role: 'admin'
             })
         }
 
@@ -93,10 +95,12 @@ exports.CreateDeposit = async (req, res) => {
                 URL_state: 0
             })
 
+            const admin = await User.findOne({where: {role: 'admin'}})
             await Notification.create({
-                user: 1,
+                user: admin.id,
                 title: `investment alert`,
-                content: `Hello Admin, ${deposituser} just made an investment of $${amount} ${trading_plan} from wallet balance, trading begins now.`
+                content: `Hello Admin, ${deposituser} just made an investment of $${amount} ${trading_plan} from wallet balance, trading begins now.`,
+                role: 'admin'
             })
         }
 

@@ -13,6 +13,19 @@ exports.GetUserNotifications = async (req, res) => {
     }
 }
 
+exports.GetAdminNotifications = async (req, res) => {
+    try {
+        const notifications = await Notification.findAll({
+            where: { role: 'admin' },
+            order: [['createdAt', 'DESC']],
+        })
+
+        return res.json({ status: 200, msg: notifications })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
 exports.DeleteNotification = async (req, res) => {
     try {
 
@@ -57,6 +70,26 @@ exports.UpdateAllNotifications = async (req, res) => {
     }
 }
 
+exports.UpdateAdminNotifications = async (req, res) => {
+
+    try {
+        const notifications = await Notification.findAll({
+            where: { role: 'admin' },
+            order: [['createdAt', 'DESC']],
+        })
+        if (!notifications) return res.json({ status: 404, msg: 'Notifications not found' })
+
+        notifications.map(async ele => {
+            ele.read = "true"
+            await ele.save()
+        })
+
+        return res.json({ status: 200, msg: notifications })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
 exports.UpdateSingleNotifications = async (req, res) => {
     try {
         const {notification_id} = req.body
@@ -86,6 +119,18 @@ exports.UnreadNotifications = async (req, res) => {
     try {
         const notifications = await Notification.findAll({
             where: { user: req.user, read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: notifications })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.AdminUnreadNotifications = async (req, res) => {
+    try {
+        const notifications = await Notification.findAll({
+            where: { role: 'admin', read: 'false' },
         })
 
         return res.json({ status: 200, msg: notifications })
