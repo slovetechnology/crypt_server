@@ -168,7 +168,7 @@ exports.DeleteUser = async (req, res) => {
         const findAdmin = await User.findOne({ where: { id: req.user } })
         if (!findAdmin) return res.json({ status: 400, msg: `Admin not found` })
 
-        if (password !== findAdmin.password) return res.json({ status: 404, msg: `Wrong password entered` })
+        if (password !== findAdmin.password) return res.json({ status: 404, msg: `Invalid password` })
 
         const imagePath = `./public/profiles/${user.image}`
         if (fs.existsSync(imagePath)) {

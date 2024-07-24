@@ -146,7 +146,7 @@ exports.ValidateOtp = async (req, res) => {
 
         const content = `<div font-size: 1rem;>Hello ${findAccount.full_name}, welcome to the AI Algo trading system where we focus on making cryptocurrency trading easy for everyone, get started by making your first deposit.</div> `
 
-        await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: findAccount.email, html: content, text: content })
+        await sendMail({ from: 'support@secureinvest.org', subject: 'Welcome to AI Algo', to: findAccount.email, html: content, text: content })
 
 
         return res.json({ status: 200, msg: findAccount, token })

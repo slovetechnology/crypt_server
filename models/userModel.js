@@ -11,6 +11,5 @@ module.exports = (sequelize, DataTypes) => {
         email_verified: {type: DataTypes.STRING, allowNull: true, defaultValue: 'false'},
         resetcode: {type: DataTypes.STRING, allowNull: true},
         password: {type: DataTypes.STRING, allowNull: false},
-        notify: {type: DataTypes.STRING, allowNull: false}
     })
 }
