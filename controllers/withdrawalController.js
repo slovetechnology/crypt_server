@@ -25,7 +25,7 @@ exports.MakeWithdrawal = async (req, res) => {
             user: req.user,
             title: `withdrawal success`,
             content: `Your withdrawal amount of $${amount} was successful, pending aprroval.`,
-            URL: 'withdrawal',
+            URL: 'withdraw',
             URL_state: 1
         })
 

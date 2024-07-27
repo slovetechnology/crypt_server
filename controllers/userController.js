@@ -79,12 +79,14 @@ exports.CreateAccount = async (req, res) => {
         })
 
         const admin = await User.findOne({ where: { role: 'admin' } })
-        await Notification.create({
-            user: admin.id,
-            title: `${username} joins AI Algo`,
-            content: `Hello Admin, you have a new user as ${full_name} joins the AI Algorithm trading system.`,
-            role: 'admin'
-        })
+        if (admin) {
+            await Notification.create({
+                user: admin.id,
+                title: `${username} joins AI Algo`,
+                content: `Hello Admin, you have a new user as ${full_name} joins the AI Algorithm trading system.`,
+                role: 'admin'
+            })
+        }
 
         const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
 

@@ -91,7 +91,7 @@ exports.CreateDeposit = async (req, res) => {
                 user: req.user,
                 title: `investment success`,
                 content: `You've successfully bought ${trading_plan} for $${amount} from your wallet balance, check your investment portfolio as your trading begins now.`,
-                URL: 'my investment',
+                URL: 'investment',
                 URL_state: 0
             })
 

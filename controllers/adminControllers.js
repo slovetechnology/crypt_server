@@ -49,7 +49,7 @@ exports.UpdateDeposits = async (req, res) => {
                     user: user,
                     title: `deposit confirmed`,
                     content: `Your deposit amount of $${deposit.amount} for ${deposit.trading_plan} has been confirmed. Check your investment portfolio as your trading begins now.`,
-                    URL: 'my investment',
+                    URL: 'investment',
                     URL_state: 0
                 })
 
@@ -71,7 +71,7 @@ exports.UpdateDeposits = async (req, res) => {
                     user: user,
                     title: `profits completed`,
                     content: `Profits for your $${deposit.amount} ${deposit.trading_plan} investment is completed. Check your investment portfolio to claim.`,
-                    URL: 'my investment',
+                    URL: 'investment',
                     URL_state: 0
                 })
 
@@ -310,7 +310,7 @@ exports.UpdateWithdrawals = async (req, res) => {
                     user: user,
                     title: `withdrawal confirmed`,
                     content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been confirmed.`,
-                    URL: 'withdrawal',
+                    URL: 'withdraw',
                     URL_state: 1
                 })
 
