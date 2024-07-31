@@ -255,6 +255,10 @@ exports.GetUserTotalInvestment = async (req, res) => {
 
     try {
         const { user_id } = req.body
+        if (!user_id) return res.json({ status: 404, msg: `Provide a user id` })
+
+        const user = await User.findOne({ where: { id: user_id } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
 
         const userdeposit = await Deposit.findAll({
             where: { user: user_id, deposit_status: 'confirmed' }
@@ -350,33 +354,33 @@ exports.UpdateWithdrawals = async (req, res) => {
 exports.CreateAdminWallets = async (req, res) => {
     try {
 
-        const { coin, network, address, } = req.body
-        if (!coin || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
-        const findCoin = await AdmimWallet.findOne({ where: { coin: coin } })
-        if (findCoin) return res.json({ status: 404, msg: `${coin} wallet already found` })
+        const { crypto, network, address, } = req.body
+        if (!crypto || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
+        const findCrypto = await AdmimWallet.findOne({ where: { crypto: crypto } })
+        if (findCrypto) return res.json({ status: 404, msg: `${crypto} wallet already exists` })
 
-        if (!req.files) return res.json({ status: 404, msg: `Coin image and Qr scan code image are required` })
+        if (!req.files) return res.json({ status: 404, msg: `Crypto image and Qr scan code image are required` })
 
-        const coin_img = req.files.coin_img
+        const crypto_img = req.files.crypto_img
         const qrcode_img = req.files.qrcode_img
 
-        const filePath = './public/coins'
+        const filePath = './public/cryptocurrency'
         if (!fs.existsSync(filePath)) {
             fs.mkdirSync(filePath)
         }
 
-        const coinImgName = `${slug(coin, '-')}.jpg`
+        const cryptoImgName = `${slug(crypto, '-')}.jpg`
         const qrCodeImgName = `${slug(network, '-')}.jpg`
 
         await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
-        await coin_img.mv(`${filePath}/${coinImgName}`)
+        await crypto_img.mv(`${filePath}/${cryptoImgName}`)
 
 
         await AdmimWallet.create({
-            coin,
+            crypto,
             network,
             address,
-            coin_img: coinImgName,
+            crypto_img: cryptoImgName,
             qrcode_img: qrCodeImgName,
         })
 
@@ -384,7 +388,7 @@ exports.CreateAdminWallets = async (req, res) => {
         })
 
 
-        return res.json({ status: 200, msg: AllWallet})
+        return res.json({ status: 200, msg: AllWallet })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -404,36 +408,36 @@ exports.GetAdminWallets = async (req, res) => {
 
 exports.UpdateAdminWallet = async (req, res) => {
     try {
-        const { coin, network, address, wallet_id } = req.body
+        const { crypto, network, address, wallet_id } = req.body
         if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
 
         const adminWallet = await AdmimWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
-        const coin_img = req?.files?.coin_img
+        const crypto_img = req?.files?.crypto_img
         const qrcode_img = req?.files?.qrcode_img
 
-        let coinImgName;
+        let cryptoImgName;
         let qrCodeImgName;
 
-        const filePath = './public/coins'
-        const currentCoinImgPath = `${filePath}/${adminWallet.coin_img}`
+        const filePath = './public/cryptocurrency'
+        const currentCryptoImgPath = `${filePath}/${adminWallet.crypto_img}`
         const currentQrCodeImgPath = `${filePath}/${adminWallet.qrcode_img}`
 
-        if (coin_img) {
+        if (crypto_img) {
 
-            if (fs.existsSync(currentCoinImgPath)) {
-                fs.unlinkSync(currentCoinImgPath)
+            if (fs.existsSync(currentCryptoImgPath)) {
+                fs.unlinkSync(currentCryptoImgPath)
             }
 
             if (!fs.existsSync(filePath)) {
                 fs.mkdirSync(filePath)
             }
 
-            if (coin) {
-                coinImgName = `${slug(coin, '-')}.jpg`
+            if (crypto) {
+                cryptoImgName = `${slug(crypto, '-')}.jpg`
             } else {
-                coinImgName = `${slug(adminWallet.coin, '-')}.jpg`
+                cryptoImgName = `${slug(adminWallet.crypto, '-')}.jpg`
             }
         }
 
@@ -454,8 +458,8 @@ exports.UpdateAdminWallet = async (req, res) => {
             }
         }
 
-        if (coin_img) {
-            await coin_img.mv(`${filePath}/${coinImgName}`)
+        if (crypto_img) {
+            await crypto_img.mv(`${filePath}/${cryptoImgName}`)
         }
 
         if (qrcode_img) {
@@ -463,14 +467,14 @@ exports.UpdateAdminWallet = async (req, res) => {
         }
 
 
-        if (coin_img) {
-            adminWallet.coin_img = coinImgName
+        if (crypto_img) {
+            adminWallet.crypto_img = cryptoImgName
         }
         if (qrcode_img) {
             adminWallet.qrcode_img = qrCodeImgName
         }
-        if (coin) {
-            adminWallet.coin = coin
+        if (crypto) {
+            adminWallet.crypto = crypto
         }
         if (network) {
             adminWallet.network = network
@@ -503,12 +507,12 @@ exports.DeleteWallet = async (req, res) => {
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
 
-        const CoinImgPath = `./public/coins/${adminWallet.coin_img}`
-        if (fs.existsSync(CoinImgPath)) {
-            fs.unlinkSync(CoinImgPath)
+        const CryptoImgPath = `./public/cryptocurrency/${adminWallet.crypto_img}`
+        if (fs.existsSync(CryptoImgPath)) {
+            fs.unlinkSync(CryptoImgPath)
         }
 
-        const QrImgPath = `./public/coins/${adminWallet.qrcode_img}`
+        const QrImgPath = `./public/cryptocurrency/${adminWallet.qrcode_img}`
         if (fs.existsSync(QrImgPath)) {
             fs.unlinkSync(QrImgPath)
         }
