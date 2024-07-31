@@ -65,6 +65,7 @@ exports.CreateAccount = async (req, res) => {
             password,
             notify: 'true'
         })
+        await imageData.mv(`${filePath}/${imageName}`)
 
         await Wallet.create({
             user: user.id
@@ -92,13 +93,12 @@ exports.CreateAccount = async (req, res) => {
 
         await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
 
-        await imageData.mv(`${filePath}/${imageName}`)
-
         const otp = otpGenerator.generate(6, { specialChars: false })
         const content = `
         <div font-size: 2rem; text-align: center>Copy and paste your account verification code below:</div>
         <div style="color: blue; font-size: 5rem; margin-top: 1rem;">${otp}</div>
         `
+
         user.resetcode = otp
         await user.save()
         await sendMail({ from: 'support@secureinvest.org', subject: 'Email Verification Code', to: user.email, html: content, text: content })
@@ -270,30 +270,36 @@ exports.UpdateProfile = async (req, res) => {
                 fs.mkdirSync(filePath)
             }
 
-            imageName = `${slug(username, '-')}.jpg`
-
-        } else {
-
-            imageName = user.image
+            if (username) {
+                imageName = `${slug(username, '-')}.jpg`
+            } else {
+                imageName = `${slug(user.username, '-')}.jpg`
+            }
         }
-
-        user.full_name = full_name
-        user.username = username
-        user.image = imageName
-        user.email = email
-
-        if (new_password) {
-            if (new_password.length < 6) return res.json({ status: 404, msg: `New Password must be at least six characters` })
-            user.password = new_password
-        } else {
-            user.password = user.password
-        }
-
-        await user.save()
 
         if (image) {
             await image.mv(`${filePath}/${imageName}`)
         }
+
+        if (image) {
+            user.image = imageName
+        }
+        if (full_name) {
+            user.full_name = full_name
+        }
+        if (username) {
+            user.username = username
+        }
+        if (email) {
+            user.email = email
+        }
+        if (new_password) {
+            if (new_password.length < 6) return res.json({ status: 404, msg: `New Password must be at least six characters` })
+            user.password = new_password
+        }
+
+        await user.save()
+
 
         return res.json({ status: 200, msg: user })
     } catch (error) {

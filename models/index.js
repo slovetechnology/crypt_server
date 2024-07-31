@@ -1,9 +1,9 @@
 const {Sequelize, DataTypes } = require("sequelize");
 require('dotenv').config()
 
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, '', {
-    host:process.env.DB_HOST,
-    dialect: 'mysql'
+const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
+    host: process.env.DB_HOST,
+    dialect: process.env.DB_DIALECT
 });
 
 sequelize.authenticate()
@@ -22,6 +22,7 @@ db.notifications = require('./notificationModel')(sequelize, DataTypes)
 db.withdrawals = require('./withdrawalModel')(sequelize, DataTypes)
 db.ups = require('./upModel')(sequelize, DataTypes)
 db.wallets = require('./walletModel')(sequelize, DataTypes)
+db.admin_wallets = require('./AdminWallets')(sequelize, DataTypes)
 
 
 db.users.hasMany(db.deposits, {foreignKey: 'user', as: 'deposituser'})

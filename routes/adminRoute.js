@@ -1,4 +1,4 @@
-const { AllDeposits, UpdateDeposits, AllUsers, DeleteUser, GetUserTotalInvestment, AllWithdrawals, UpdateWithdrawals } = require('../controllers/adminControllers')
+const { AllDeposits, UpdateDeposits, AllUsers, DeleteUser, GetUserTotalInvestment, AllWithdrawals, UpdateWithdrawals, CreateAdminWallets, UpdateAdminWallet, DeleteWallet, GetAdminWallets } = require('../controllers/adminControllers')
 const { AdminMiddleware } = require('../middleware/auth')
 
 
@@ -11,6 +11,10 @@ router.put('/update-deposits', AdminMiddleware, UpdateDeposits)
 router.put('/update-withdrawals', AdminMiddleware, UpdateWithdrawals)
 router.post('/delete-users', AdminMiddleware, DeleteUser)
 router.post('/get-user-total', AdminMiddleware, GetUserTotalInvestment)
+router.post('/create-admin-wallet', AdminMiddleware, CreateAdminWallets)
+router.get('/all-admin-wallets', AdminMiddleware, GetAdminWallets)
+router.put('/update-admin-wallet', AdminMiddleware, UpdateAdminWallet)
+router.post('/delete-admin-wallet', AdminMiddleware, DeleteWallet)
 
 
 

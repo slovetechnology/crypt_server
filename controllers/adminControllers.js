@@ -4,8 +4,10 @@ const Deposit = require('../models').deposits
 const Notification = require('../models').notifications
 const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
+const AdmimWallet = require('../models').admin_wallets
 const Up = require('../models').ups
 const fs = require('fs')
+const slug = require('slug')
 const sendMail = require('../config/emailConfig')
 
 
@@ -337,9 +339,189 @@ exports.UpdateWithdrawals = async (req, res) => {
             order: [['createdAt', 'DESC']]
         })
 
-        return res.json({status: 200, msg: allwithdrawals})
+        return res.json({ status: 200, msg: allwithdrawals })
 
     } catch (error) {
         return res.json({ status: 200, msg: error.message })
+    }
+}
+
+
+exports.CreateAdminWallets = async (req, res) => {
+    try {
+
+        const { coin, network, address, } = req.body
+        if (!coin || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
+        const findCoin = await AdmimWallet.findOne({ where: { coin: coin } })
+        if (findCoin) return res.json({ status: 404, msg: `${coin} wallet already found` })
+
+        if (!req.files) return res.json({ status: 404, msg: `Coin image and Qr scan code image are required` })
+
+        const coin_img = req.files.coin_img
+        const qrcode_img = req.files.qrcode_img
+
+        const filePath = './public/coins'
+        if (!fs.existsSync(filePath)) {
+            fs.mkdirSync(filePath)
+        }
+
+        const coinImgName = `${slug(coin, '-')}.jpg`
+        const qrCodeImgName = `${slug(network, '-')}.jpg`
+
+        await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
+        await coin_img.mv(`${filePath}/${coinImgName}`)
+
+
+        await AdmimWallet.create({
+            coin,
+            network,
+            address,
+            coin_img: coinImgName,
+            qrcode_img: qrCodeImgName,
+        })
+
+        const AllWallet = await AdmimWallet.findAll({
+        })
+
+
+        return res.json({ status: 200, msg: AllWallet})
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.GetAdminWallets = async (req, res) => {
+    try {
+        const adminWallets = await AdmimWallet.findAll({
+        })
+
+        return res.json({ status: 200, msg: adminWallets })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+
+exports.UpdateAdminWallet = async (req, res) => {
+    try {
+        const { coin, network, address, wallet_id } = req.body
+        if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
+
+        const adminWallet = await AdmimWallet.findOne({ where: { id: wallet_id } })
+        if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
+
+        const coin_img = req?.files?.coin_img
+        const qrcode_img = req?.files?.qrcode_img
+
+        let coinImgName;
+        let qrCodeImgName;
+
+        const filePath = './public/coins'
+        const currentCoinImgPath = `${filePath}/${adminWallet.coin_img}`
+        const currentQrCodeImgPath = `${filePath}/${adminWallet.qrcode_img}`
+
+        if (coin_img) {
+
+            if (fs.existsSync(currentCoinImgPath)) {
+                fs.unlinkSync(currentCoinImgPath)
+            }
+
+            if (!fs.existsSync(filePath)) {
+                fs.mkdirSync(filePath)
+            }
+
+            if (coin) {
+                coinImgName = `${slug(coin, '-')}.jpg`
+            } else {
+                coinImgName = `${slug(adminWallet.coin, '-')}.jpg`
+            }
+        }
+
+        if (qrcode_img) {
+
+            if (fs.existsSync(currentQrCodeImgPath)) {
+                fs.unlinkSync(currentQrCodeImgPath)
+            }
+
+            if (!fs.existsSync(filePath)) {
+                fs.mkdirSync(filePath)
+            }
+
+            if (network) {
+                qrCodeImgName = `${slug(network, '-')}.jpg`
+            } else {
+                qrCodeImgName = `${slug(adminWallet.network, '-')}.jpg`
+            }
+        }
+
+        if (coin_img) {
+            await coin_img.mv(`${filePath}/${coinImgName}`)
+        }
+
+        if (qrcode_img) {
+            await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
+        }
+
+
+        if (coin_img) {
+            adminWallet.coin_img = coinImgName
+        }
+        if (qrcode_img) {
+            adminWallet.qrcode_img = qrCodeImgName
+        }
+        if (coin) {
+            adminWallet.coin = coin
+        }
+        if (network) {
+            adminWallet.network = network
+        }
+        if (address) {
+            adminWallet.address = address
+        }
+
+
+        await adminWallet.save()
+
+        const AllWallet = await AdmimWallet.findAll({
+        })
+
+
+        return res.json({ status: 200, msg: AllWallet })
+    } catch (error) {
+        res.json({ status: 400, msg: error.message })
+    }
+}
+
+
+exports.DeleteWallet = async (req, res) => {
+    try {
+        const { wallet_id } = req.body
+
+        if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
+
+        const adminWallet = await AdmimWallet.findOne({ where: { id: wallet_id } })
+        if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
+
+
+        const CoinImgPath = `./public/coins/${adminWallet.coin_img}`
+        if (fs.existsSync(CoinImgPath)) {
+            fs.unlinkSync(CoinImgPath)
+        }
+
+        const QrImgPath = `./public/coins/${adminWallet.qrcode_img}`
+        if (fs.existsSync(QrImgPath)) {
+            fs.unlinkSync(QrImgPath)
+        }
+
+
+        await adminWallet.destroy()
+
+        const AllWallet = await AdmimWallet.findAll({
+        })
+
+        return res.json({ status: 200, msg: AllWallet })
+
+    } catch (error) {
+        return res.json({ status: 500, msg: error.message })
     }
 }
