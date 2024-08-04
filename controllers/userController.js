@@ -250,6 +250,11 @@ exports.UpdateProfile = async (req, res) => {
             if (!userPassword) return res.json({ status: 404, msg: 'Enter your correct old password' })
         }
 
+        if (username !== user.username) {
+            const matchedSomeoneElse = await User.findOne({ where: { username: username } })
+            if (matchedSomeoneElse) return res.json({ status: 404, msg: 'Username unavailable' })
+        }
+
         if (email !== user.email) {
             user.email_verified = 'false'
         }
