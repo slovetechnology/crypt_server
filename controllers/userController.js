@@ -256,6 +256,8 @@ exports.UpdateProfile = async (req, res) => {
         }
 
         if (email !== user.email) {
+            const matchedSomeoneElse = await User.findOne({ where: { email: email } })
+            if (matchedSomeoneElse) return res.json({ status: 404, msg: 'New email entered already exist' })
             user.email_verified = 'false'
         }
 
