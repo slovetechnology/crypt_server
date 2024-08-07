@@ -13,46 +13,36 @@ const otpGenerator = require('otp-generator')
 
 exports.CreateAccount = async (req, res) => {
     try {
-        const { full_name, username, email, country, country_flag, tradersCode, password, confirm_password } = req.body
+        const { full_name, username, email, country, country_flag, referral_code, password, confirm_password } = req.body
 
         if (!full_name) return res.json({ status: 404, msg: `Your full name is required` })
         if (!username) return res.json({ status: 404, msg: `Username is required` })
         if (!email) return res.json({ status: 404, msg: `Email address is required` })
-        if (!country) return res.json({ status: 404, msg: `Country is required` })
-        if (!tradersCode) return res.json({ status: 404, msg: `Trader's code is required` })
-        if (tradersCode.length < 7) return res.json({ status: 404, msg: `Trader's code must be at least 7 characters` })
-
-        const traders = [
-            {
-                tCode: 'jamesaipro511'
-            },
-            {
-                tCode: 'masonaipro374'
-            }
-        ]
-        const codeValidate = traders.filter(item => item.tCode === tradersCode)
-        if (!codeValidate.length > 0) return res.json({ status: 404, msg: `Trader's code is invalid` })
-
-        if (!password) return res.json({ status: 404, msg: `Password is required` })
+        if (!country) return res.json({ status: 404, msg: `Country flag is required` })
+        if (!country_flag) return res.json({ status: 404, msg: `Trader's code is required` })
         if (password.length < 6) return res.json({ status: 404, msg: `Password must be at least 6 characters` })
         if (!confirm_password) return res.json({ status: 404, msg: `Confirm password is required` })
-        if (confirm_password !== password) return res.json({ status: 404, msg: `Passwords mismatched` })
-
+        if (confirm_password !== password) return res.json({ status: 404, msg: `Passwords mismatch` })
 
         const findUsername = await User.findOne({ where: { username: username } })
         if (findUsername) return res.json({ status: 400, msg: `Username already exists` })
         const findEmail = await User.findOne({ where: { email: email } })
         if (findEmail) return res.json({ status: 400, msg: `Email already exists` })
 
-        if (!req.files) return res.json({ status: 404, msg: `Profile image is required` })
-        const imageData = req.files.image
+        const imageData = req?.files?.image
 
         const filePath = './public/profiles'
         if (!fs.existsSync(filePath)) {
             fs.mkdirSync(filePath)
         }
 
-        const imageName = `${slug(username, '-')}.jpg`
+        let imageName;
+        if (imageData) {
+            imageName = `${slug(username, '-')}.jpg`
+        }
+        if (imageData) {
+            await imageData.mv(`${filePath}/${imageName}`)
+        }
 
         const user = await User.create({
             image: imageName,
@@ -61,11 +51,9 @@ exports.CreateAccount = async (req, res) => {
             username,
             email,
             country,
-            tradersCode,
+            referral_code,
             password,
-            notify: 'true'
         })
-        await imageData.mv(`${filePath}/${imageName}`)
 
         await Wallet.create({
             user: user.id
@@ -84,25 +72,25 @@ exports.CreateAccount = async (req, res) => {
             await Notification.create({
                 user: admin.id,
                 title: `${username} joins AI Algo`,
-                content: `Hello Admin, you have a new user as ${full_name} joins the AI Algorithm trading system.`,
+                content: `Hello Admin, you have a new user as ${full_name} joins the system.`,
                 role: 'admin'
             })
         }
 
         const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
 
-        await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
+        if (admin) {
+            await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
+        }
 
         const otp = otpGenerator.generate(6, { specialChars: false })
         const content = `
         <div font-size: 2rem; text-align: center>Copy and paste your account verification code below:</div>
         <div style="color: blue; font-size: 5rem; margin-top: 1rem;">${otp}</div>
         `
-
         user.resetcode = otp
         await user.save()
         await sendMail({ from: 'support@secureinvest.org', subject: 'Email Verification Code', to: user.email, html: content, text: content })
-
 
         return res.json({ status: 201, msg: `Account created successfully` })
     } catch (error) {
@@ -410,7 +398,7 @@ exports.DeleteAcount = async (req, res) => {
         await Notification.create({
             user: admin.id,
             title: `${user.username} leaves AI Algo`,
-            content: `Hello Admin, ${user.full_name} permanently deletes account on the AI Algorithm trading system.`,
+            content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
             role: 'admin'
         })
 
@@ -425,26 +413,6 @@ exports.DeleteAcount = async (req, res) => {
 
     } catch (error) {
         return res.json({ status: 500, msg: error.message })
-    }
-}
-
-exports.ToggleNotification = async (req, res) => {
-    try {
-        const { user_id, notify } = req.body
-        const user = await User.findOne({ where: { id: user_id } })
-        if (!user) return res.json({ status: 404, msg: `User id is required` })
-
-        if (notify === true) {
-            user.notify = 'true'
-        } else {
-            user.notify = 'false'
-        }
-
-        await user.save()
-
-        return res.json({ status: 200, msg: user })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
     }
 }
 

@@ -4,12 +4,12 @@ const Deposit = require('../models').deposits
 const Notification = require('../models').notifications
 const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
-const AdmimWallet = require('../models').admin_wallets
+const AdminWallet = require('../models').admin_wallets
+const TradingPlans = require('../models').trading_plans
 const Up = require('../models').ups
 const fs = require('fs')
 const slug = require('slug')
 const sendMail = require('../config/emailConfig')
-
 
 
 exports.AllDeposits = async (req, res) => {
@@ -18,7 +18,7 @@ exports.AllDeposits = async (req, res) => {
             include: [
                 {
                     model: User,
-                    as: 'deposituser',
+                    as: 'depositUser',
                     attributes: {
                         exclude: ['password', 'createdAt', 'updatedAt', 'role']
                     }
@@ -36,60 +36,44 @@ exports.AllDeposits = async (req, res) => {
 exports.UpdateDeposits = async (req, res) => {
 
     try {
-        const { user, deposit_status, deposit_id, profit, bonus, profit_status } = req.body
+        const { user_id, status, deposit_id } = req.body
 
-        const deposituser = await User.findOne({ where: { id: user } })
-        if (!deposituser) return res.json({ status: 400, msg: 'Deposit User not found' })
+        const depositUser = await User.findOne({ where: { id: user_id } })
+        if (!depositUser) return res.json({ status: 400, msg: 'Deposit User not found' })
         const deposit = await Deposit.findOne({ where: { id: deposit_id } })
         if (!deposit) return res.json({ status: 400, msg: 'Deposit not found' })
 
-        if (deposit.deposit_status !== 'confirmed') {
+        if (deposit.status !== 'confirmed') {
 
-            if (deposit_status === 'confirmed') {
+            if (status === 'confirmed') {
 
                 await Notification.create({
-                    user: user,
+                    user: user_id,
                     title: `deposit confirmed`,
-                    content: `Your deposit amount of $${deposit.amount} for ${deposit.trading_plan} has been confirmed. Check your investment portfolio as your trading begins now.`,
-                    URL: 'investment',
+                    content: `Your deposit amount of $${deposit.amount} confirmed. Check your wallet for your available balance.`,
+                    URL: 'wallet',
                     URL_state: 0
                 })
 
-                const wallet = await Wallet.findOne({ where: { user: user } })
+                const wallet = await Wallet.findOne({ where: { user: user_id } })
                 if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
                 wallet.total_deposit += deposit.amount
+                wallet.balance += deposit.amount
                 await wallet.save()
 
-                const content = `<div font-size: 1rem;>Hello ${deposituser.username}, your deposit of $${deposit.amount} for ${deposit.trading_plan} has been confirmed, your trading on this investment begins now.</div> `
+                const content = `<div font-size: 1rem;>Hello ${depositUser.username}, your deposit of $${deposit.amount} has been successfully confirmed.</div> `
 
-                await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Confirmation', to: deposituser.email, html: content, text: content })
+                await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Confirmation', to: depositUser.email, html: content, text: content })
             }
         }
 
-        if (deposit.profit_status !== 'completed') {
-            if (profit_status === 'completed') {
+        if (deposit.status !== 'failed') {
+            if (status === 'failed') {
 
                 await Notification.create({
-                    user: user,
-                    title: `profits completed`,
-                    content: `Profits for your $${deposit.amount} ${deposit.trading_plan} investment is completed. Check your investment portfolio to claim.`,
-                    URL: 'investment',
-                    URL_state: 0
-                })
-
-                const content = `<div font-size: 1rem;>Hello ${deposituser.username}, your profits generated for the investment of $${deposit.amount} ${deposit.trading_plan} has been completed, you can now succesfully claim to your wallet.</div> `
-
-                await sendMail({ from: 'support@secureinvest.org', subject: 'Profit Completed', to: deposituser.email, html: content, text: content })
-            }
-        }
-
-        if (deposit.deposit_status !== 'failed') {
-            if (deposit_status === 'failed') {
-
-                await Notification.create({
-                    user: user,
-                    title: `approval failed`,
-                    content: `Your deposit amount of $${deposit.amount} for ${deposit.trading_plan} approval failed. This deposit was not confirmed.`,
+                    user: user_id,
+                    title: `deposit failed`,
+                    content: `Your deposit amount of $${deposit.amount} confirmation failed. This deposit was not confirmed.`,
                     status: 'failed',
                     URL: 'deposit',
                     URL_state: 1
@@ -97,37 +81,15 @@ exports.UpdateDeposits = async (req, res) => {
             }
         }
 
-        deposit.deposit_status = deposit_status
-        deposit.profit_status = profit_status
-
-        if (profit) {
-            deposit.profit += profit
-        }
-
-        if (bonus) {
-            deposit.bonus += bonus
-
-        }
+        deposit.status = status
 
         await deposit.save()
-
-        const investment = await Investment.findOne({ where: { id: deposit_id } })
-
-        if (!investment) return res.json({ status: 200, msg: `Investment user not found` })
-
-        investment.profit = deposit.profit
-        investment.bonus = deposit.bonus
-        investment.investment_status = deposit.deposit_status
-        investment.profit_status = deposit.profit_status
-
-        await investment.save()
-
 
         const alldeposits = await Deposit.findAll({
             include: [
                 {
                     model: User,
-                    as: 'deposituser',
+                    as: 'depositUser',
                     attributes: {
                         exclude: ['password', 'createdAt', 'updatedAt', 'role']
                     }
@@ -138,6 +100,86 @@ exports.UpdateDeposits = async (req, res) => {
         })
         return res.json({ status: 200, msg: alldeposits })
 
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.AllInvestments = async (req, res) => {
+    try {
+        const investments = await Investment.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'investmentUser',
+                    attributes: {
+                        exclude: ['password', 'createdAt', 'updatedAt', 'role']
+                    }
+                },
+            ],
+
+            order: [['createdAt', 'DESC']]
+        })
+        
+        return res.json({ status: 200, msg: investments })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.UpdateInvestments = async (req, res) => {
+
+    try {
+        const { user_id, status, investment_id, profit, bonus, } = req.body
+
+        const investmentUser = await User.findOne({ where: { id: user_id } })
+        if (!investmentUser) return res.json({ status: 400, msg: 'Investment User not found' })
+        const investment = await Investment.findOne({ where: { id: investment_id } })
+        if (!investment) return res.json({ status: 400, msg: 'Investment not found' })
+
+        if (investment.status !== 'completed') {
+            if (status === 'completed') {
+
+                await Notification.create({
+                    user: user_id,
+                    title: `profit completed`,
+                    content: `Profits for your $${investment.amount} ${investment.trading_plan} investment is completed. Check your investment portfolio to claim.`,
+                    URL: 'investment',
+                    URL_state: 0
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${investmentUser.username}, your profits generated for the investment of $${investment.amount} ${investment.trading_plan} has been completed, you can now succesfully claim to your wallet.</div> `
+
+                await sendMail({ from: 'support@secureinvest.org', subject: 'Profit Completed', to: investmentUser.email, html: content, text: content })
+            }
+        }
+
+        investment.status = status
+        if (profit) {
+            investment.profit += profit
+        }
+        if (bonus) {
+            investment.bonus += bonus
+
+        }
+
+        await investment.save()
+
+        const investments = await Investment.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'investmentUser',
+                    attributes: {
+                        exclude: ['password', 'createdAt', 'updatedAt', 'role']
+                    }
+                },
+            ],
+
+            order: [['createdAt', 'DESC']]
+        })
+
+        return res.json({ status: 200, msg: investments })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -251,7 +293,7 @@ exports.DeleteUser = async (req, res) => {
 }
 
 
-exports.GetUserTotalInvestment = async (req, res) => {
+exports.GetUserFigures = async (req, res) => {
 
     try {
         const { user_id } = req.body
@@ -264,14 +306,20 @@ exports.GetUserTotalInvestment = async (req, res) => {
             where: { user: user_id, deposit_status: 'confirmed' }
         })
 
-        let amount = 0
+        const userFigures = {
+            total_investment: 0,
+            wallet_balance: 0
+        }
 
         userdeposit.map(item => {
-            amount += item.amount
-
+            userFigures.total_investment += item.amount
         })
 
-        return res.json({ status: 200, msg: amount })
+        const wallet = await Wallet.findOne({ where: { user: user_id } })
+        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+        userFigures.wallet_balance = wallet.balance
+
+        return res.json({ status: 200, msg: userFigures })
 
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
@@ -284,7 +332,7 @@ exports.AllWithdrawals = async (req, res) => {
             include: [
                 {
                     model: User,
-                    as: 'wthuser',
+                    as: 'wthUser',
                     attributes: {
                         exclude: ['password', 'createdAt', 'updatedAt', 'role']
                     }
@@ -356,7 +404,7 @@ exports.CreateAdminWallets = async (req, res) => {
 
         const { crypto, network, address, } = req.body
         if (!crypto || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
-        const findCrypto = await AdmimWallet.findOne({ where: { crypto: crypto } })
+        const findCrypto = await AdminWallet.findOne({ where: { crypto: crypto } })
         if (findCrypto) return res.json({ status: 404, msg: `${crypto} wallet already exists` })
 
         if (!req.files) return res.json({ status: 404, msg: `Crypto image and Qr scan code image are required` })
@@ -376,7 +424,7 @@ exports.CreateAdminWallets = async (req, res) => {
         await crypto_img.mv(`${filePath}/${cryptoImgName}`)
 
 
-        await AdmimWallet.create({
+        await AdminWallet.create({
             crypto,
             network,
             address,
@@ -384,9 +432,8 @@ exports.CreateAdminWallets = async (req, res) => {
             qrcode_img: qrCodeImgName,
         })
 
-        const AllWallet = await AdmimWallet.findAll({
+        const AllWallet = await AdminWallet.findAll({
         })
-
 
         return res.json({ status: 200, msg: AllWallet })
     } catch (error) {
@@ -396,7 +443,7 @@ exports.CreateAdminWallets = async (req, res) => {
 
 exports.GetAdminWallets = async (req, res) => {
     try {
-        const adminWallets = await AdmimWallet.findAll({
+        const adminWallets = await AdminWallet.findAll({
         })
 
         return res.json({ status: 200, msg: adminWallets })
@@ -409,9 +456,9 @@ exports.GetAdminWallets = async (req, res) => {
 exports.UpdateAdminWallet = async (req, res) => {
     try {
         const { crypto, network, address, wallet_id } = req.body
-        if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
+        if (!wallet_id) return res.json({ status: 404, msg: `Provide Wallet id` })
 
-        const adminWallet = await AdmimWallet.findOne({ where: { id: wallet_id } })
+        const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
         const crypto_img = req?.files?.crypto_img
@@ -483,12 +530,10 @@ exports.UpdateAdminWallet = async (req, res) => {
             adminWallet.address = address
         }
 
-
         await adminWallet.save()
 
-        const AllWallet = await AdmimWallet.findAll({
+        const AllWallet = await AdminWallet.findAll({
         })
-
 
         return res.json({ status: 200, msg: AllWallet })
     } catch (error) {
@@ -503,7 +548,7 @@ exports.DeleteWallet = async (req, res) => {
 
         if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
 
-        const adminWallet = await AdmimWallet.findOne({ where: { id: wallet_id } })
+        const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
 
@@ -517,14 +562,102 @@ exports.DeleteWallet = async (req, res) => {
             fs.unlinkSync(QrImgPath)
         }
 
-
         await adminWallet.destroy()
 
-        const AllWallet = await AdmimWallet.findAll({
+        const AllWallet = await AdminWallet.findAll({
         })
 
         return res.json({ status: 200, msg: AllWallet })
+    } catch (error) {
+        return res.json({ status: 500, msg: error.message })
+    }
+}
 
+exports.CreateTradingPlan = async (req, res) => {
+    try {
+
+        const { title, price_start, price_limit, plan_bonus } = req.body
+        if (!title || !price_start || !price_limit || !plan_bonus) return res.json({ status: 404, msg: `Incomplete request found` })
+
+        const findPlan = await TradingPlans.findOne({ where: { title: title } })
+        if (findPlan) return res.json({ status: 404, msg: `${title} already exists` })
+
+
+        await TradingPlans.create({
+            title,
+            price_start,
+            price_limit,
+            plan_bonus
+        })
+
+        const AllPlans = await TradingPlans.findAll({
+        })
+
+        return res.json({ status: 200, msg: AllPlans })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.GetTradingPlans = async (req, res) => {
+    try {
+        const tradingplans = await TradingPlans.findAll({
+        })
+
+        return res.json({ status: 200, msg: tradingplans })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.UpdateTradingPlan = async (req, res) => {
+    try {
+        const { title, price_start, price_limit, plan_bonus, plan_id } = req.body
+        if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
+
+        const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
+        if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
+
+        if (title) {
+            tradingPlan.title = title
+        }
+        if (price_start) {
+            tradingPlan.price_start = price_start
+        }
+        if (price_limit) {
+            tradingPlan.price_limit = price_limit
+        }
+        if (plan_bonus) {
+            tradingPlan.plan_bonus = plan_bonus
+        }
+
+        await tradingPlan.save()
+
+        const AllPlans = await TradingPlans.findAll({
+        })
+
+        return res.json({ status: 200, msg: AllPlans })
+    } catch (error) {
+        res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.DeleteTradingPlan = async (req, res) => {
+    try {
+        const { plan_id } = req.body
+
+        if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
+
+        const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
+        if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
+
+
+        await tradingPlan.destroy()
+
+        const AllPlans = await TradingPlans.findAll({
+        })
+
+        return res.json({ status: 200, msg: AllPlans })
     } catch (error) {
         return res.json({ status: 500, msg: error.message })
     }

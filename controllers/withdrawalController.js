@@ -30,12 +30,14 @@ exports.MakeWithdrawal = async (req, res) => {
         })
 
         const admin = await User.findOne({ where: { role: 'admin' } })
-        await Notification.create({
-            user: admin.id,
-            title: `withdrawal alert`,
-            content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`,
-            role: 'admin'
-        })
+        if (admin) {
+            await Notification.create({
+                user: admin.id,
+                title: `withdrawal alert`,
+                content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`,
+                role: 'admin'
+            })
+        }
 
         const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
 

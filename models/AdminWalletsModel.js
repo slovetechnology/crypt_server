@@ -3,7 +3,7 @@ module.exports = (sequelize, DataTypes) => {
         crypto: {type: DataTypes.STRING},
         network: {type: DataTypes.STRING},
         address: {type: DataTypes.STRING},
-        crypto_img: {type: DataTypes.STRING, allowNull: false},
-        qrcode_img: {type: DataTypes.STRING, allowNull: false},
+        crypto_img: {type: DataTypes.STRING},
+        qrcode_img: {type: DataTypes.STRING}
     })
 }
