@@ -29,8 +29,7 @@ exports.CreateInvestment = async (req, res) => {
             user: req.user,
             title: `investment success`,
             content: `You've successfully bought ${trading_plan} for $${amount} from wallet balance, check your investment portfolio as trading begins now.`,
-            URL: 'investment',
-            URL_state: 0
+            URL: '/dashboard/investment',
         })
 
         const admin = await User.findOne({ where: { role: 'admin' } })
@@ -39,7 +38,8 @@ exports.CreateInvestment = async (req, res) => {
                 user: admin.id,
                 title: `investment alert`,
                 content: `Hello Admin, ${investmentUser} just made an investment of $${amount} ${trading_plan}, trading begins now.`,
-                role: 'admin'
+                role: 'admin',
+                URL: '/admin-controls/investments',
             })
         }
 
@@ -52,8 +52,7 @@ exports.CreateInvestment = async (req, res) => {
             })
         }
 
-        return res.json({ status: 200, msg: 'Investment success' })
-
+        return res.json({ status: 200, msg:  'Investment success'})
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -61,12 +60,12 @@ exports.CreateInvestment = async (req, res) => {
 
 exports.UserInvestments = async (req, res) => {
     try {
-        const investment = await Investment.findAll({
+        const investments = await Investment.findAll({
             where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
 
-        return res.json({ status: 200, msg: investment })
+        return res.json({ status: 200, msg: investments })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -74,14 +73,14 @@ exports.UserInvestments = async (req, res) => {
 
 exports.UserUnclaimInvestments = async (req, res) => {
     try {
-        const investment = await Investment.findAll({
+        const investments = await Investment.findAll({
             where: {
                 user: req.user, claim: 'false',
             },
             order: [['createdAt', 'DESC']],
         })
 
-        return res.json({ status: 200, msg: investment })
+        return res.json({ status: 200, msg: investments })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -116,18 +115,12 @@ exports.ClaimInvestment = async (req, res) => {
                     user: req.user,
                     title: `claim success`,
                     content: `Your $${investment.amount} ${investment.trading_plan} investment, profit and bonus generated has been successfully claimed to your wallet.`,
-                    URL: 'wallet',
-                    URL_state: 0
+                    URL: '/dashboard',       
                 })
             }
         }
 
-        const userinvestment = await Investment.findAll({
-            where: { user: req.user },
-            order: [['createdAt', 'DESC']],
-        })
-
-        return res.json({ status: 200, msg: userinvestment })
+        return res.json({ status: 200, msg: 'Investment claimed successfully' })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }

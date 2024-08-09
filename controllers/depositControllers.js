@@ -24,8 +24,7 @@ exports.CreateDeposit = async (req, res) => {
             user: req.user,
             title: `deposit success`,
             content: `Your deposit amount of $${amount} was successful, pending aprroval.`,
-            URL: 'deposit',
-            URL_state: 1
+            URL: '/dashboard/deposit',
         })
 
         if (admin) {
@@ -33,7 +32,8 @@ exports.CreateDeposit = async (req, res) => {
                 user: admin.id,
                 title: `deposit alert`,
                 content: `Hello Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.`,
-                role: 'admin'
+                role: 'admin',
+                URL: '/admin-controls',
             })
         }
 

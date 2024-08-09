@@ -31,7 +31,6 @@ exports.DeleteNotification = async (req, res) => {
 
         const { notification_id } = req.body
         if (!notification_id) return res.json({ status: 404, msg: `Notification Id is required` })
-
         const notification = await Notification.findOne({ where: { id: notification_id } })
         if (!notification) return res.json({ status: 404, msg: 'Notification not found' })
         if (notification.user !== req.user) return res.json({ status: 400, msg: 'You are not authorized to process this data' })
@@ -39,7 +38,7 @@ exports.DeleteNotification = async (req, res) => {
         await notification.destroy()
 
         const notifications = await Notification.findAll({
-            where: {user: req.user },
+            where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
 
@@ -64,7 +63,7 @@ exports.UpdateAllNotifications = async (req, res) => {
             await ele.save()
         })
 
-        return res.json({ status: 200, msg: notifications })
+        return res.json({ status: 200, msg: 'Notifications updated successfully' })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -84,7 +83,7 @@ exports.UpdateAdminNotifications = async (req, res) => {
             await ele.save()
         })
 
-        return res.json({ status: 200, msg: notifications })
+        return res.json({ status: 200, msg: 'Notifications updated successfully' })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -92,10 +91,9 @@ exports.UpdateAdminNotifications = async (req, res) => {
 
 exports.UpdateSingleNotifications = async (req, res) => {
     try {
-        const {notification_id} = req.body
+        const { notification_id } = req.body
         if (!notification_id) return res.json({ status: 404, msg: `Notification Id is required` })
-
-        const notification = await Notification.findOne({ where: { id: notification_id }})
+        const notification = await Notification.findOne({ where: { id: notification_id } })
         if (!notification) return res.json({ status: 404, msg: 'Notification not found' })
         if (notification.user !== req.user) return res.json({ status: 400, msg: 'You are not authorized to process this data' })
 
@@ -103,13 +101,25 @@ exports.UpdateSingleNotifications = async (req, res) => {
         notification.read = 'true'
         await notification.save()
 
-        const notifications = await Notification.findAll({
-            where: {user: req.user },
-            order: [['createdAt', 'DESC']],
-        })
+        return res.json({ status: 200, msg: 'Notification updated successfully' })
 
-        return res.json({ status: 200, msg: notifications })
-        
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.UpdateAdminSingleNotifications = async (req, res) => {
+    try {
+        const { notification_id } = req.body
+        if (!notification_id) return res.json({ status: 404, msg: `Notification Id is required` })
+        const notification = await Notification.findOne({ where: { id: notification_id } })
+        if (!notification) return res.json({ status: 404, msg: 'Notification not found' })
+
+        notification.read = 'true'
+        await notification.save()
+
+        return res.json({ status: 200, msg: 'Notification updated successfully' })
+
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }

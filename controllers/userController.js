@@ -63,8 +63,7 @@ exports.CreateAccount = async (req, res) => {
             user: user.id,
             title: `welcome ${username}`,
             content: 'Welcome to the AI Artification Intelligence Trading System where we focus on making crypto trading easy. Get started by making your first deposit.',
-            URL: 'deposit',
-            URL_state: 0
+            URL: '/dashboard/deposit',
         })
 
         const admin = await User.findOne({ where: { role: 'admin' } })
@@ -73,7 +72,8 @@ exports.CreateAccount = async (req, res) => {
                 user: admin.id,
                 title: `${username} joins AI Algo`,
                 content: `Hello Admin, you have a new user as ${full_name} joins the system.`,
-                role: 'admin'
+                role: 'admin',
+                URL: '/admin-controls/users',
             })
         }
 
@@ -295,7 +295,6 @@ exports.UpdateProfile = async (req, res) => {
 
         await user.save()
 
-
         return res.json({ status: 200, msg: user })
     } catch (error) {
         res.json({ status: 400, msg: error.message })
@@ -385,7 +384,6 @@ exports.DeleteAcount = async (req, res) => {
             })
         }
 
-
         if (wallet) {
             await wallet.destroy()
         }
@@ -399,13 +397,13 @@ exports.DeleteAcount = async (req, res) => {
             user: admin.id,
             title: `${user.username} leaves AI Algo`,
             content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
-            role: 'admin'
+            role: 'admin',
+            URL: '/admin-controls/users',
         })
 
         const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
 
         await sendMail({ from: 'support@secureinvest.org', subject: 'User Leaves AI Algo', to: admin.email, html: emailcontent, text: emailcontent })
-
 
         await user.destroy()
 
@@ -431,6 +429,7 @@ exports.UserUp = async (req, res) => {
     try {
         const ups = await Up.findOne({ where: { user: req.user } })
         if (!ups) return res.json({ status: 404, msg: `User ups not found` })
+            
         return res.json({ status: 200, msg: ups })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
