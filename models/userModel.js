@@ -7,7 +7,7 @@ module.exports = (sequelize, DataTypes) => {
         role: {type: DataTypes.STRING, defaultValue: 'user'},
         email: {type: DataTypes.STRING},
         country: {type: DataTypes.STRING},
-        referral_code: {type: DataTypes.STRING, allowNull: true},
+        referral_id: {type: DataTypes.STRING},
         email_verified: {type: DataTypes.STRING, allowNull: true, defaultValue: 'false'},
         resetcode: {type: DataTypes.STRING, allowNull: true},
         password: {type: DataTypes.STRING},

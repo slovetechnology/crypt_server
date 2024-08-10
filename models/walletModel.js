@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
         total_profit: {type: DataTypes.FLOAT, defaultValue: 0, allowNull: true},      
         total_bonus: {type: DataTypes.FLOAT, defaultValue: 0, allowNull: true},
         total_withdrawal: {type: DataTypes.FLOAT, defaultValue: 0, allowNull: true},
+        referral: {type: DataTypes.FLOAT, defaultValue: 0, allowNull: true},
         balance: {type: DataTypes.FLOAT, defaultValue: 0, allowNull: true},
     })
 }

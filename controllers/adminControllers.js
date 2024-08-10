@@ -650,7 +650,7 @@ exports.FundUserAccount = async (req, res) => {
         await Notification.create({
             user: user_id,
             title: `wallet funded`,
-            content: `Your account has been funded with $${amount}`,
+            content: `Your account has been funded with $${amount}, check your balance.`,
             URL: '/dashboard',
         })
 

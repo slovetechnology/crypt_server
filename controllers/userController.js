@@ -13,7 +13,7 @@ const otpGenerator = require('otp-generator')
 
 exports.CreateAccount = async (req, res) => {
     try {
-        const { full_name, username, email, country, country_flag, referral_code, password, confirm_password } = req.body
+        const { full_name, username, email, referral_id, country, country_flag, password, confirm_password } = req.body
 
         if (!full_name) return res.json({ status: 404, msg: `Your full name is required` })
         if (!username) return res.json({ status: 404, msg: `Username is required` })
@@ -44,6 +44,7 @@ exports.CreateAccount = async (req, res) => {
             await imageData.mv(`${filePath}/${imageName}`)
         }
 
+        const myReferralId = 'AI_' + otpGenerator.generate(8, { specialChars: false })
         const user = await User.create({
             image: imageName,
             country_flag,
@@ -51,7 +52,7 @@ exports.CreateAccount = async (req, res) => {
             username,
             email,
             country,
-            referral_code,
+            referral_id: myReferralId,
             password,
         })
 
@@ -91,6 +92,26 @@ exports.CreateAccount = async (req, res) => {
         user.resetcode = otp
         await user.save()
         await sendMail({ from: 'support@secureinvest.org', subject: 'Email Verification Code', to: user.email, html: content, text: content })
+
+        if (referral_id) {
+            const findMyReferral = await User.findOne({ where: { referral_id: referral_id } })
+            if (!findMyReferral) return res.json({ status: 404, msg: 'User not found' })
+            if (findMyReferral.role === 'user') {
+                const wallet = await Wallet.findOne({ where: { user: findMyReferral.id } })
+                if (!wallet) return res.json({ status: 404, msg: 'User wallet not found' })
+
+                wallet.referral += 100
+                wallet.balance += 100
+                await wallet.save()
+
+                await Notification.create({
+                    user: findMyReferral.id,
+                    title: `referral bonus`,
+                    content: `Your account has been credited with $${100} from a referral.`,
+                    URL: '/dashboard',
+                })
+            }
+        }
 
         return res.json({ status: 201, msg: `Account created successfully` })
     } catch (error) {
@@ -429,7 +450,7 @@ exports.UserUp = async (req, res) => {
     try {
         const ups = await Up.findOne({ where: { user: req.user } })
         if (!ups) return res.json({ status: 404, msg: `User ups not found` })
-            
+
         return res.json({ status: 200, msg: ups })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
