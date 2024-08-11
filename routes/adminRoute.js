@@ -1,4 +1,4 @@
-const { AllUsers, DeleteUser, AllWithdrawals, UpdateWithdrawals, CreateAdminWallets, UpdateAdminWallet, DeleteWallet, GetAdminWallets, GetUserFigures, AllInvestments, UpdateInvestments, CreateTradingPlan, GetTradingPlans, UpdateTradingPlan, DeleteTradingPlan, AllDeposits, UpdateDeposits, FundUserAccount } = require('../controllers/adminControllers')
+const { AllUsers, DeleteUser, AllWithdrawals, UpdateWithdrawals, CreateAdminWallets, UpdateAdminWallet, DeleteWallet, GetAdminWallets, GetUserFigures, AllInvestments, UpdateInvestments, CreateTradingPlan, GetTradingPlans, UpdateTradingPlan, DeleteTradingPlan, AllDeposits, UpdateDeposits, FundUserAccount, GetAdminStore, UpdateAdminStore } = require('../controllers/adminControllers')
 const { AdminMiddleware, AllMiddleware } = require('../middleware/auth')
 
 
@@ -18,10 +18,12 @@ router.get('/all-admin-wallets', AllMiddleware, GetAdminWallets)
 router.put('/update-admin-wallet', AdminMiddleware, UpdateAdminWallet)
 router.post('/delete-admin-wallet', AdminMiddleware, DeleteWallet)
 router.post('/create-trading-plan', AdminMiddleware, CreateTradingPlan)
-router.get('/all-trading-plans', AllMiddleware, GetTradingPlans)
+router.get('/all-trading-plans', GetTradingPlans)
 router.put('/update-trading-plan', AdminMiddleware, UpdateTradingPlan)
 router.post('/delete-trading-plan', AdminMiddleware, DeleteTradingPlan)
 router.put('/fund-user-account', AdminMiddleware, FundUserAccount)
+router.get('/admin-store', AllMiddleware, GetAdminStore)
+router.put('/update-admin-store', AdminMiddleware, UpdateAdminStore)
 
 
 module.exports = router

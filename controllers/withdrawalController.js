@@ -22,7 +22,7 @@ exports.MakeWithdrawal = async (req, res) => {
         await Notification.create({
             user: req.user,
             title: `withdrawal success`,
-            content: `Your withdrawal amount of $${amount} was successful, pending aprroval.`,
+            content: `Your withdrawal amount of $${amount} was successful, now processing.`,
             URL: '/dashboard/withdraw',
         })
 

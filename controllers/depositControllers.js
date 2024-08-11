@@ -6,13 +6,14 @@ const User = require('../models').users
 exports.CreateDeposit = async (req, res) => {
     try {
 
-        const { amount, crypto, depositUser } = req.body
-        if (!amount || !crypto || !depositUser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, crypto, deposit_address, depositUser } = req.body
+        if (!amount || !crypto || !deposit_address || !depositUser) return res.json({ status: 404, msg: `Incomplete request found` })
 
         await Deposit.create({
             user: req.user,
             amount,
-            crypto
+            crypto,
+            deposit_address
         })
 
         const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto} please confirm transaction.</div> `

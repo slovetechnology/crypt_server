@@ -24,6 +24,7 @@ db.ups = require('./upModel')(sequelize, DataTypes)
 db.wallets = require('./walletModel')(sequelize, DataTypes)
 db.admin_wallets = require('./AdminWalletsModel')(sequelize, DataTypes)
 db.trading_plans = require('./TradingPlans')(sequelize, DataTypes)
+db.admin_store = require('./adminStore')(sequelize, DataTypes)
 
 
 db.users.hasMany(db.deposits, {foreignKey: 'user', as: 'depositUser'})

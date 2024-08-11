@@ -6,6 +6,7 @@ const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
 const AdminWallet = require('../models').admin_wallets
 const TradingPlans = require('../models').trading_plans
+const AdminStore = require('../models').admin_store
 const Up = require('../models').ups
 const fs = require('fs')
 const slug = require('slug')
@@ -97,7 +98,6 @@ exports.UpdateDeposits = async (req, res) => {
         })
 
         return res.json({ status: 200, msg: deposits })
-
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -273,7 +273,7 @@ exports.DeleteUser = async (req, res) => {
             order: [['createdAt', 'DESC']]
         })
 
-        return res.json({ status: 200, msg: users})
+        return res.json({ status: 200, msg: users })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -335,7 +335,7 @@ exports.AllWithdrawals = async (req, res) => {
 
 exports.UpdateWithdrawals = async (req, res) => {
     try {
-        const { user, status, withdrawal_id } = req.body
+        const { user, status, message, withdrawal_id } = req.body
         const withdrawaluser = await User.findOne({ where: { id: user } })
         if (!withdrawaluser) return res.json({ status: 400, msg: 'Withdrawal user not found' })
         const withdrawal = await Withdrawal.findOne({ where: { id: withdrawal_id } })
@@ -358,6 +358,18 @@ exports.UpdateWithdrawals = async (req, res) => {
             }
         }
 
+        if (message) {
+
+            await Notification.create({
+                user: user,
+                title: `Support Team`,
+                content: message,
+                URL: '/dashboard/tax-payment',
+            })
+
+            await sendMail({ from: 'support@secureinvest.org', subject: 'Support Team', to: withdrawaluser.email, html: message, text: message })
+        }
+
         withdrawal.status = status
         await withdrawal.save()
 
@@ -375,7 +387,7 @@ exports.UpdateWithdrawals = async (req, res) => {
             order: [['createdAt', 'DESC']]
         })
 
-        return res.json({ status: 200, msg: withdrawals})
+        return res.json({ status: 200, msg: withdrawals })
 
     } catch (error) {
         return res.json({ status: 200, msg: error.message })
@@ -388,8 +400,6 @@ exports.CreateAdminWallets = async (req, res) => {
 
         const { crypto, network, address, } = req.body
         if (!crypto || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
-        const findCrypto = await AdminWallet.findOne({ where: { crypto: crypto } })
-        if (findCrypto) return res.json({ status: 404, msg: `${crypto} wallet already exists` })
         if (!req.files) return res.json({ status: 404, msg: `Crypto image and Qr scan code image are required` })
 
         const crypto_img = req.files.crypto_img
@@ -515,7 +525,7 @@ exports.UpdateAdminWallet = async (req, res) => {
         const adminWallets = await AdminWallet.findAll({
         })
 
-        return res.json({ status: 200, msg: adminWallets})
+        return res.json({ status: 200, msg: adminWallets })
     } catch (error) {
         res.json({ status: 400, msg: error.message })
     }
@@ -545,7 +555,7 @@ exports.DeleteWallet = async (req, res) => {
         const adminWallets = await AdminWallet.findAll({
         })
 
-        return res.json({ status: 200, msg: adminWallets})
+        return res.json({ status: 200, msg: adminWallets })
     } catch (error) {
         return res.json({ status: 500, msg: error.message })
     }
@@ -569,7 +579,7 @@ exports.CreateTradingPlan = async (req, res) => {
         const tradingplans = await TradingPlans.findAll({
         })
 
-        return res.json({ status: 200, msg: tradingplans})
+        return res.json({ status: 200, msg: tradingplans })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -611,7 +621,7 @@ exports.UpdateTradingPlan = async (req, res) => {
         const tradingplans = await TradingPlans.findAll({
         })
 
-        return res.json({ status: 200, msg: tradingplans})
+        return res.json({ status: 200, msg: tradingplans })
     } catch (error) {
         res.json({ status: 400, msg: error.message })
     }
@@ -629,7 +639,7 @@ exports.DeleteTradingPlan = async (req, res) => {
         const tradingplans = await TradingPlans.findAll({
         })
 
-        return res.json({ status: 200, msg: tradingplans})
+        return res.json({ status: 200, msg: tradingplans })
     } catch (error) {
         return res.json({ status: 500, msg: error.message })
     }
@@ -640,9 +650,9 @@ exports.FundUserAccount = async (req, res) => {
         const { user_id, amount } = req.body
         if (!user_id || !amount) return res.json({ status: 404, msg: `Incomplete request` })
         const user = await User.findOne({ where: { id: user_id } })
-        if (!user) return res.json({ status: 404, msg: 'User not found'})
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
         const wallet = await Wallet.findOne({ where: { user: user_id } })
-        if (!wallet) return res.json({ status: 404, msg: 'User wallet not found'})
+        if (!wallet) return res.json({ status: 404, msg: 'User wallet not found' })
 
         wallet.balance += amount
         await wallet.save()
@@ -657,5 +667,52 @@ exports.FundUserAccount = async (req, res) => {
         return res.json({ status: 200, msg: 'User account funded successfully' })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.GetAdminStore = async (req, res) => {
+    try {
+        const adminStore = await AdminStore.findOne({
+        })
+
+        return res.json({ status: 200, msg: adminStore })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.UpdateAdminStore = async (req, res) => {
+
+    try {
+        const { referral_bonus, withdrawal_minimum, profit_percentage, investment_duration, tax_percentage } = req.body
+        
+        const adminStore = await AdminStore.findOne({
+        })
+        if (!adminStore) return res.json({ status: 400, msg: 'Admin Store not found' })
+
+        if (referral_bonus) {
+            adminStore.referral_bonus = referral_bonus
+        }
+        if (withdrawal_minimum) {
+            adminStore.withdrawal_minimum = withdrawal_minimum
+        }
+        if (profit_percentage) {
+            adminStore.profit_percentage = profit_percentage
+        }
+        if (investment_duration) {
+            adminStore.investment_duration = investment_duration
+        }
+        if (tax_percentage) {
+            adminStore.tax_percentage = tax_percentage
+        }
+
+        await adminStore.save()
+
+        const updated = await AdminStore.findOne({
+        })
+
+        return res.json({ status: 200, msg: updated })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
     }
 }

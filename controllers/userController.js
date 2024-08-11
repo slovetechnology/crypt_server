@@ -6,6 +6,7 @@ const Notification = require('../models').notifications
 const Deposit = require('../models').deposits
 const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
+const AdminStore = require('../models').admin_store
 const Up = require('../models').ups
 const jwt = require('jsonwebtoken')
 const sendMail = require('../config/emailConfig')
@@ -13,7 +14,7 @@ const otpGenerator = require('otp-generator')
 
 exports.CreateAccount = async (req, res) => {
     try {
-        const { full_name, username, email, referral_id, country, country_flag, password, confirm_password } = req.body
+        const { full_name, username, email, referral_code, country, country_flag, password, confirm_password } = req.body
 
         if (!full_name) return res.json({ status: 404, msg: `Your full name is required` })
         if (!username) return res.json({ status: 404, msg: `Username is required` })
@@ -28,6 +29,10 @@ exports.CreateAccount = async (req, res) => {
         if (findUsername) return res.json({ status: 400, msg: `Username already exists` })
         const findEmail = await User.findOne({ where: { email: email } })
         if (findEmail) return res.json({ status: 400, msg: `Email already exists` })
+        if (referral_code) {
+            const findMyReferral = await User.findOne({ where: { referral_id: referral_code } })
+            if (!findMyReferral) return res.json({ status: 404, msg: 'Invalid referral code' })
+        }
 
         const imageData = req?.files?.image
 
@@ -93,23 +98,30 @@ exports.CreateAccount = async (req, res) => {
         await user.save()
         await sendMail({ from: 'support@secureinvest.org', subject: 'Email Verification Code', to: user.email, html: content, text: content })
 
-        if (referral_id) {
-            const findMyReferral = await User.findOne({ where: { referral_id: referral_id } })
-            if (!findMyReferral) return res.json({ status: 404, msg: 'User not found' })
-            if (findMyReferral.role === 'user') {
-                const wallet = await Wallet.findOne({ where: { user: findMyReferral.id } })
-                if (!wallet) return res.json({ status: 404, msg: 'User wallet not found' })
+        const adminStore = await AdminStore.findOne({
+        })
+        if (!adminStore) {
+            await AdminStore.create({
+            })
+        }
 
-                wallet.referral += 100
-                wallet.balance += 100
-                await wallet.save()
+        if (referral_code) {
+            const findMyReferral = await User.findOne({ where: { referral_id: referral_code } })
+            const wallet = await Wallet.findOne({ where: { user: findMyReferral.id } })
+            
+            if (wallet) {
+                if (adminStore) {
+                    wallet.referral += adminStore.referral_bonus
+                    wallet.balance += adminStore.referral_bonus
+                    await wallet.save()
 
-                await Notification.create({
-                    user: findMyReferral.id,
-                    title: `referral bonus`,
-                    content: `Your account has been credited with $${100} from a referral.`,
-                    URL: '/dashboard',
-                })
+                    await Notification.create({
+                        user: findMyReferral.id,
+                        title: `referral bonus`,
+                        content: `Your account has been credited with $${adminStore.referral_bonus} from a referral.`,
+                        URL: '/dashboard',
+                    })
+                }
             }
         }
 
@@ -204,6 +216,7 @@ exports.FindAccountByEmail = async (req, res) => {
         return res.json({ status: 400, msg: error.message })
     }
 }
+
 exports.VerifyOtpForPassword = async (req, res) => {
     try {
         const { email, code } = req.body
