@@ -248,8 +248,8 @@ exports.AllWithdrawals = async (req, res) => {
 
 exports.UpdateWithdrawals = async (req, res) => {
     try {
-        const { user, status, message, withdrawal_id } = req.body
-        const withdrawaluser = await User.findOne({ where: { id: user } })
+        const { user_id, status, message, withdrawal_id } = req.body
+        const withdrawaluser = await User.findOne({ where: { id: user_id } })
         if (!withdrawaluser) return res.json({ status: 400, msg: 'Withdrawal user not found' })
         const withdrawal = await Withdrawal.findOne({ where: { id: withdrawal_id } })
         if (!withdrawal) return res.json({ status: 400, msg: 'Withdrawal not found' })
@@ -259,7 +259,7 @@ exports.UpdateWithdrawals = async (req, res) => {
             if (status === 'confirmed') {
 
                 await Notification.create({
-                    user: user,
+                    user: user_id,
                     title: `withdrawal confirmed`,
                     content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been confirmed.`,
                     URL: '/dashboard/withdraw',
@@ -274,7 +274,7 @@ exports.UpdateWithdrawals = async (req, res) => {
         if (message) {
 
             await Notification.create({
-                user: user,
+                user: user_id,
                 title: `Support Team`,
                 content: message,
                 URL: '/dashboard/tax-payment',
@@ -285,7 +285,6 @@ exports.UpdateWithdrawals = async (req, res) => {
 
         withdrawal.status = status
         await withdrawal.save()
-
 
         return res.json({ status: 200, msg: 'Withdrawal updated successfully' })
 
@@ -642,5 +641,66 @@ exports.AllTaxes = async (req, res) => {
         return res.json({ status: 200, msg: taxes })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.UpdateTaxes = async (req, res) => {
+    try {
+        const { user_id, status, message, tax_id } = req.body
+        const taxPayer = await User.findOne({ where: { id: user_id } })
+        if (!taxPayer) return res.json({ status: 400, msg: 'Tax Payer not found' })
+        const tax = await Tax.findOne({ where: { id: tax_id } })
+        if (!tax) return res.json({ status: 400, msg: 'tax not found' })
+
+        if (tax.status !== 'received') {
+
+            if (status === 'received') {
+
+                await Notification.create({
+                    user: user_id,
+                    title: `tax received`,
+                    content: `Your tax payment amount of $${tax.amount} has been received and your taxes cleared.`,
+                    URL: '/dashboard/tax-payment',
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
+
+                await sendMail({ from: 'support@secureinvest.org', subject: 'Tax Cleared', to: taxPayer.email, html: content, text: content })
+            }
+        }
+
+        if (tax.status !== 'failed') {
+
+            if (status === 'failed') {
+
+                await Notification.create({
+                    user: user_id,
+                    title: `tax receival failed`,
+                    content: `Your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.`,
+                    status: 'failed',
+                    URL: '/dashboard/tax-payment',
+                })
+            }
+        }
+
+        if (message) {
+
+            await Notification.create({
+                user: user_id,
+                title: `Support Team`,
+                content: message,
+                URL: '/dashboard/tax-payment',
+            })
+
+            await sendMail({ from: 'support@secureinvest.org', subject: 'Support Team', to: taxPayer.email, html: message, text: message })
+        }
+
+        tax.status = status
+        await tax.save()
+
+        return res.json({ status: 200, msg: 'Tax updated successfully' })
+
+    } catch (error) {
+        return res.json({ status: 200, msg: error.message })
     }
 }

@@ -32,7 +32,9 @@ exports.PayTax = async (req, res) => {
             fs.mkdirSync(filePath)
         }
 
-        const imageName = `${slug(taxPayer, '-')}.jpg`
+        const slugData = slug(taxPayer, '-')
+        const date = new Date()
+        const imageName = `${slugData}-${date.getTime()}.jpg`
 
         await image.mv(`${filePath}/${imageName}`)
 
@@ -56,7 +58,7 @@ exports.PayTax = async (req, res) => {
             await Notification.create({
                 user: admin.id,
                 title: `tax payment alert`,
-                content: `Hello Admin, ${taxPayer} ust made a tax payment amount of $${amount} to ${crypto} deposit address.`,
+                content: `Hello Admin, ${taxPayer} just made a tax payment amount of $${amount} to ${crypto} deposit address.`,
                 role: 'admin',
                 URL: '/admin-controls/taxes',
             })
