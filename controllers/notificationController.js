@@ -26,6 +26,30 @@ exports.GetAdminNotifications = async (req, res) => {
     }
 }
 
+exports.UnreadNotifications = async (req, res) => {
+    try {
+        const notifications = await Notification.findAll({
+            where: { user: req.user, read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: notifications })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.AdminUnreadNotifications = async (req, res) => {
+    try {
+        const notifications = await Notification.findAll({
+            where: { role: 'admin', read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: notifications })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
 exports.DeleteNotification = async (req, res) => {
     try {
 
@@ -120,30 +144,6 @@ exports.UpdateAdminSingleNotifications = async (req, res) => {
 
         return res.json({ status: 200, msg: 'Notification updated successfully' })
 
-    } catch (error) {
-        res.json({ status: 500, msg: error.message })
-    }
-}
-
-exports.UnreadNotifications = async (req, res) => {
-    try {
-        const notifications = await Notification.findAll({
-            where: { user: req.user, read: 'false' },
-        })
-
-        return res.json({ status: 200, msg: notifications })
-    } catch (error) {
-        res.json({ status: 500, msg: error.message })
-    }
-}
-
-exports.AdminUnreadNotifications = async (req, res) => {
-    try {
-        const notifications = await Notification.findAll({
-            where: { role: 'admin', read: 'false' },
-        })
-
-        return res.json({ status: 200, msg: notifications })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }

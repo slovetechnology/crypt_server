@@ -12,6 +12,13 @@ exports.CreateInvestment = async (req, res) => {
         const { amount, trading_plan, investmentUser } = req.body
         if (!amount || !trading_plan || !investmentUser) return res.json({ status: 404, msg: `Incomplete request found` })
 
+        if (trading_plan === 'test run') {
+            const investments = await Investment.findAll({ where: { user: req.user } })
+            const TestRunTrial = investments.filter(item => item.trading_plan === 'test run')
+            if (TestRunTrial.length > 0) return res.json({ status: 404, msg: `Test Run is one trial only` })
+            if (investments.length > 0) return res.json({ status: 404, msg: `Test Run is for first investment only` })
+        }
+
         await Investment.create({
             user: req.user,
             amount,
@@ -52,7 +59,7 @@ exports.CreateInvestment = async (req, res) => {
             })
         }
 
-        return res.json({ status: 200, msg:  'Investment success'})
+        return res.json({ status: 200, msg: 'Investment success' })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -115,12 +122,21 @@ exports.ClaimInvestment = async (req, res) => {
                     user: req.user,
                     title: `claim success`,
                     content: `Your $${investment.amount} ${investment.trading_plan} investment, profit and bonus generated has been successfully claimed to your wallet.`,
-                    URL: '/dashboard',       
+                    URL: '/dashboard',
                 })
             }
         }
 
-        return res.json({ status: 200, msg: 'Investment claimed successfully' })
+        const notifications = await Notification.findAll({
+            where: { user: req.user },
+            order: [['createdAt', 'DESC']],
+        })
+
+        const unreadnotis = await Notification.findAll({
+            where: { user: req.user, read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: 'Investment claimed successfully', notis: notifications, unread: unreadnotis })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }

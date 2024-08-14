@@ -108,7 +108,7 @@ exports.CreateAccount = async (req, res) => {
         if (referral_code) {
             const findMyReferral = await User.findOne({ where: { referral_id: referral_code } })
             const wallet = await Wallet.findOne({ where: { user: findMyReferral.id } })
-            
+
             if (wallet) {
                 if (adminStore) {
                     wallet.referral += adminStore.referral_bonus
@@ -183,11 +183,12 @@ exports.LoginAccount = async (req, res) => {
         const { email, password } = req.body
 
         if (!email || !password) return res.json({ status: 404, msg: `Incomplete request` })
-
         const findEmail = await User.findOne({ where: { email: email } })
-        if (!findEmail) return res.json({ status: 400, msg: `No account belongs to the email ` })
+        if (!findEmail) return res.json({ status: 400, msg: `No account belongs to the email` })
+        if (password !== findEmail.password) return res.json({ status: 404, msg: `Wrong password entered` })
 
-        if (password !== findEmail.password) return res.json({ status: 404, msg: `Wrong password detected` })
+        const findIfSuspended = await User.findOne({ where: { email: email, suspend: 'true' } })
+        if (findIfSuspended) return res.json({ status: 400, msg: `Your account has been suspended` })
 
         const token = jwt.sign({ id: findEmail.id, role: findEmail.role }, process.env.JWT_SECRET, { expiresIn: '3h' })
 

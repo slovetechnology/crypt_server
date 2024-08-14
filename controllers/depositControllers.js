@@ -16,17 +16,14 @@ exports.CreateDeposit = async (req, res) => {
             deposit_address
         })
 
-        const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto} please confirm transaction.</div> `
-
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Alert', to: admin.email, html: content, text: content })
-
         await Notification.create({
             user: req.user,
             title: `deposit success`,
-            content: `Your deposit amount of $${amount} was successful, pending aprroval.`,
+            content: `Your deposit amount of $${amount} was successful, pending confirmation.`,
             URL: '/dashboard/deposit',
         })
+
+        const admin = await User.findOne({ where: { role: 'admin' } })
 
         if (admin) {
             await Notification.create({
@@ -36,14 +33,23 @@ exports.CreateDeposit = async (req, res) => {
                 role: 'admin',
                 URL: '/admin-controls',
             })
+
+            const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.</div> `
+
+            await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Alert', to: admin.email, html: content, text: content })
+
         }
 
-        const deposits = await Deposit.findAll({
-            where: { user: req.user},
+        const notifications = await Notification.findAll({
+            where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
 
-        return res.json({ status: 200, msg: deposits })
+        const unreadnotis = await Notification.findAll({
+            where: { user: req.user, read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: 'Deposit success', notis: notifications, unread: unreadnotis })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -52,7 +58,7 @@ exports.CreateDeposit = async (req, res) => {
 exports.DepositsFromUser = async (req, res) => {
     try {
         const deposits = await Deposit.findAll({
-            where: { user: req.user},
+            where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
 

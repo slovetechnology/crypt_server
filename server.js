@@ -28,6 +28,7 @@ app.use('/api/admin', require('./routes/adminRoute'))
 app.use('/api/notification', require('./routes/notificationRoute'))
 app.use('/api/withdrawal', require('./routes/withdrawalRoute'))
 app.use('/api/investment', require('./routes/investmentRoute'))
+app.use('/api/tax', require('./routes/taxRoute'))
 
 
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`))

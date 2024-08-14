@@ -35,11 +35,11 @@ exports.MakeWithdrawal = async (req, res) => {
                 role: 'admin',
                 URL: '/admin-controls/withdrawals',
             })
+
+            const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
+
+            await sendMail({ from: 'support@secureinvest.org', subject: 'Withdrawal Alert', to: admin.email, html: content, text: content })
         }
-
-        const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
-
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Withdrawal Alert', to: admin.email, html: content, text: content })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
@@ -47,12 +47,18 @@ exports.MakeWithdrawal = async (req, res) => {
         wallet.balance -= amount
         await wallet.save()
 
-        const withdrawals = await Withdrawal.findAll({
+        const notifications = await Notification.findAll({
             where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
 
-        return res.json({ status: 200, msg: withdrawals })
+        const unreadnotis = await Notification.findAll({
+            where: { user: req.user, read: 'false' },
+        })
+
+        const updatedwallet = await Wallet.findOne({ where: { user: req.user } })
+
+        return res.json({ status: 200, msg: 'Withdrawal success', notis: notifications, unread: unreadnotis, wallet: updatedwallet })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
