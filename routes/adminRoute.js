@@ -1,4 +1,4 @@
-const { AllUsers, AllWithdrawals, UpdateWithdrawals, CreateAdminWallets, UpdateAdminWallet, DeleteWallet, GetAdminWallets, GetUserFigures, AllInvestments, UpdateInvestments, CreateTradingPlan, GetTradingPlans, UpdateTradingPlan, DeleteTradingPlan, AllDeposits, UpdateDeposits, FundUserAccount, GetAdminStore, UpdateAdminStore, UpdateUserWithdrawalMinimum, Suspend_Unsuspend_User, AllTaxes, UpdateTaxes } = require('../controllers/adminControllers')
+const { AllUsers, AllWithdrawals, UpdateWithdrawals, CreateAdminWallets, UpdateAdminWallet, DeleteWallet, GetAdminWallets, GetUserFigures, AllInvestments, UpdateInvestments, CreateTradingPlan, GetTradingPlans, UpdateTradingPlan, DeleteTradingPlan, AllDeposits, UpdateDeposits, FundUserAccount, GetAdminStore, UpdateAdminStore, UpdateUserWithdrawalMinimum, Suspend_Unsuspend_User, AllTaxes, UpdateTaxes, AdminCreateAccount } = require('../controllers/adminControllers')
 const { AdminMiddleware, AllMiddleware } = require('../middleware/auth')
 
 
@@ -27,6 +27,7 @@ router.get('/admin-store', AllMiddleware, GetAdminStore)
 router.put('/update-admin-store', AdminMiddleware, UpdateAdminStore)
 router.get('/all-taxes', AdminMiddleware, AllTaxes)
 router.put('/update-taxes', AdminMiddleware, UpdateTaxes)
+router.post('/admin-create-account', AdminMiddleware, AdminCreateAccount)
 
 
 module.exports = router

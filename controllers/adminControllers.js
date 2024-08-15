@@ -11,6 +11,7 @@ const Tax = require('../models').taxes
 const fs = require('fs')
 const slug = require('slug')
 const sendMail = require('../config/emailConfig')
+const otpGenerator = require('otp-generator')
 
 
 exports.AllDeposits = async (req, res) => {
@@ -702,5 +703,87 @@ exports.UpdateTaxes = async (req, res) => {
 
     } catch (error) {
         return res.json({ status: 200, msg: error.message })
+    }
+}
+
+exports.AdminCreateAccount = async (req, res) => {
+    try {
+        const { full_name, username, email, country, country_flag, password, role } = req.body
+        if (!full_name) return res.json({ status: 404, msg: `Your full name is required` })
+        if (!username) return res.json({ status: 404, msg: `Username is required` })
+        if (!email) return res.json({ status: 404, msg: `Email address is required` })
+        if (!country) return res.json({ status: 404, msg: `Country is required` })
+        if (!country_flag) return res.json({ status: 404, msg: `Country flag is required` })
+        if (!password) return res.json({ status: 404, msg: `Password is required` })
+        if (password.length < 6) return res.json({ status: 404, msg: `Password must be at least 6 characters` })
+        if (!role) return res.json({ status: 404, msg: `Role is required` })
+
+        const findUsername = await User.findOne({ where: { username: username } })
+        if (findUsername) return res.json({ status: 400, msg: `Username already exists` })
+        const findEmail = await User.findOne({ where: { email: email } })
+        if (findEmail) return res.json({ status: 400, msg: `Email already exists` })
+
+        const myReferralId = 'AI_' + otpGenerator.generate(8, { specialChars: false })
+
+        if (role === 'user') {
+            const user = await User.create({
+                full_name,
+                username,
+                email,
+                country,
+                country_flag,
+                password,
+                email_verified: 'true',
+                referral_id: myReferralId,
+            })
+
+            await Wallet.create({
+                user: user.id
+            })
+
+            await Notification.create({
+                user: user.id,
+                title: `welcome ${username}`,
+                content: 'Welcome to the AI Artification Intelligence Trading System where we focus on making crypto trading easy. Get started by making your first deposit.',
+                URL: '/dashboard/deposit',
+            })
+
+        } else {
+            await User.create({
+                full_name,
+                username,
+                email,
+                country,
+                country_flag,
+                password,
+                email_verified: 'true',
+                referral_id: myReferralId,
+                role: role
+            })
+        }
+
+        const admin = await User.findOne({ where: { role: 'admin' } })
+        if (admin) {
+            await Notification.create({
+                user: admin.id,
+                title: `${username} joins AI Algo`,
+                content: `Hello Admin, you have successfully created ${full_name} as a ${role} on the system.`,
+                role: 'admin',
+                URL: '/admin-controls/users',
+            })
+        }
+
+        const notifications = await Notification.findAll({
+            where: { role: 'admin' },
+            order: [['createdAt', 'DESC']],
+        })
+
+        const unreadNotifications = await Notification.findAll({
+            where: { role: 'admin', read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: `Account created successfully`, notis: notifications, unread: unreadNotifications })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
     }
 }

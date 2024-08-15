@@ -6,8 +6,9 @@ const Notification = require('../models').notifications
 const Deposit = require('../models').deposits
 const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
-const AdminStore = require('../models').admin_store
 const Up = require('../models').ups
+const Tax = require('../models').taxes
+const AdminStore = require('../models').admin_store
 const jwt = require('jsonwebtoken')
 const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
@@ -19,8 +20,9 @@ exports.CreateAccount = async (req, res) => {
         if (!full_name) return res.json({ status: 404, msg: `Your full name is required` })
         if (!username) return res.json({ status: 404, msg: `Username is required` })
         if (!email) return res.json({ status: 404, msg: `Email address is required` })
-        if (!country) return res.json({ status: 404, msg: `Country flag is required` })
-        if (!country_flag) return res.json({ status: 404, msg: `Trader's code is required` })
+        if (!country) return res.json({ status: 404, msg: `Country is required` })
+        if (!country_flag) return res.json({ status: 404, msg: `Country flag is required` })
+        if (!password) return res.json({ status: 404, msg: `Password is required` })
         if (password.length < 6) return res.json({ status: 404, msg: `Password must be at least 6 characters` })
         if (!confirm_password) return res.json({ status: 404, msg: `Confirm password is required` })
         if (confirm_password !== password) return res.json({ status: 404, msg: `Passwords mismatch` })
@@ -125,7 +127,7 @@ exports.CreateAccount = async (req, res) => {
             }
         }
 
-        return res.json({ status: 201, msg: `Account created successfully` })
+        return res.json({ status: 200, msg: `Account created successfully` })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -262,16 +264,10 @@ exports.GetProfile = async (req, res) => {
 
 exports.UpdateProfile = async (req, res) => {
     try {
-        const { full_name, username, email, old_password, new_password, user_id } = req.body
-        if (!user_id) return res.json({ status: 404, msg: `Provide your account id` })
+        const { full_name, username, email, old_password, new_password } = req.body
 
-        const user = await User.findOne({ where: { id: user_id } })
+        const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'Account not found' })
-
-        if (old_password) {
-            const userPassword = await User.findOne({ where: { password: old_password } })
-            if (!userPassword) return res.json({ status: 404, msg: 'Enter your correct old password' })
-        }
 
         if (username !== user.username) {
             const matchedSomeoneElse = await User.findOne({ where: { username: username } })
@@ -280,8 +276,11 @@ exports.UpdateProfile = async (req, res) => {
 
         if (email !== user.email) {
             const matchedSomeoneElse = await User.findOne({ where: { email: email } })
-            if (matchedSomeoneElse) return res.json({ status: 404, msg: 'New email entered already exist' })
-            user.email_verified = 'false'
+            if (matchedSomeoneElse) return res.json({ status: 404, msg: 'Email entered already exists' })
+
+            if (user.role === 'user') {
+                user.email_verified = 'false'
+            }
         }
 
         const image = req?.files?.image
@@ -323,7 +322,14 @@ exports.UpdateProfile = async (req, res) => {
         if (email) {
             user.email = email
         }
+        if (old_password) {
+
+            if (!new_password) return res.json({ status: 404, msg: `Enter your new password` })
+            if (user.password !== old_password) return res.json({ status: 404, msg: 'Enter your correct old password' })
+        }
         if (new_password) {
+
+            if (!old_password) return res.json({ status: 404, msg: `Enter your old password` })
             if (new_password.length < 6) return res.json({ status: 404, msg: `New Password must be at least six characters` })
             user.password = new_password
         }
@@ -415,6 +421,16 @@ exports.DeleteAcount = async (req, res) => {
 
         if (withdrawals) {
             withdrawals.map(async ele => {
+                await ele.destroy()
+            })
+        }
+
+        const taxes = await Tax.findAll({
+            where: { user: req.user },
+        })
+
+        if (taxes) {
+            taxes.map(async ele => {
                 await ele.destroy()
             })
         }
