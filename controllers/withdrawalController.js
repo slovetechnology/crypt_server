@@ -38,7 +38,9 @@ exports.MakeWithdrawal = async (req, res) => {
 
             const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
 
-            await sendMail({ from: 'support@secureinvest.org', subject: 'Withdrawal Alert', to: admin.email, html: content, text: content })
+            if (admin) {
+                await sendMail({ subject: 'Withdrawal Alert', to: admin.email, html: content, text: content })
+            }
         }
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })

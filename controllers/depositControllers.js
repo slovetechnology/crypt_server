@@ -36,8 +36,9 @@ exports.CreateDeposit = async (req, res) => {
 
             const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.</div> `
 
-            await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Alert', to: admin.email, html: content, text: content })
-
+            if (admin) {
+                await sendMail({ subject: 'Deposit Alert', to: admin.email, html: content, text: content })
+            }
         }
 
         const notifications = await Notification.findAll({

@@ -88,7 +88,7 @@ exports.CreateAccount = async (req, res) => {
         const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
 
         if (admin) {
-            await sendMail({ from: 'support@secureinvest.org', subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
+            await sendMail({ subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
         }
 
         const otp = otpGenerator.generate(6, { specialChars: false })
@@ -98,7 +98,7 @@ exports.CreateAccount = async (req, res) => {
         `
         user.resetcode = otp
         await user.save()
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Email Verification Code', to: user.email, html: content, text: content })
+        await sendMail({ subject: 'Email Verification Code', to: user.email, html: content, text: content })
 
         const adminStore = await AdminStore.findOne({
         })
@@ -212,7 +212,7 @@ exports.FindAccountByEmail = async (req, res) => {
         `
         user.resetcode = otp
         await user.save()
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Email Verification Code', to: user.email, html: content, text: content })
+        await sendMail({ subject: 'Email Verification Code', to: user.email, html: content, text: content })
 
         return res.json({ status: 200 })
     } catch (error) {
@@ -348,12 +348,16 @@ exports.ContactFromUsers = async (req, res) => {
         if (!email) return res.json({ status: 404, msg: `Enter your email account` })
         if (!message) return res.json({ status: 404, msg: `Enter your message` })
 
+        const admin = await User.findOne({ where: { role: 'admin' } })
+
         const content = `
         <div style="color: #E96E28">From: ${email}</div>
         <div style="margin-top: 1rem; color: #E96E28">Message:</div>
         <div style="margin-top: 0.5rem">${message}</div>
         `
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Contact From AiAlgo Users', to: 'palmergid@gmail.com', html: content, text: content })
+        if (admin) {
+            await sendMail({ subject: 'Contact From Ai Algo User', to: admin.email, html: content, text: content })
+        }
 
         return res.json({ status: 200, msg: 'Your message has been successfullly delivered' })
     } catch (error) {
@@ -444,17 +448,21 @@ exports.DeleteAcount = async (req, res) => {
         }
 
         const admin = await User.findOne({ where: { role: 'admin' } })
-        await Notification.create({
-            user: admin.id,
-            title: `${user.username} leaves AI Algo`,
-            content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
-            role: 'admin',
-            URL: '/admin-controls/users',
-        })
+        if (admin) {
+            await Notification.create({
+                user: admin.id,
+                title: `${user.username} leaves AI Algo`,
+                content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
+                role: 'admin',
+                URL: '/admin-controls/users',
+            })
+        }
 
         const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
 
-        await sendMail({ from: 'support@secureinvest.org', subject: 'User Leaves AI Algo', to: admin.email, html: emailcontent, text: emailcontent })
+        if (admin) {
+            await sendMail({ subject: 'User Leaves AI Algo', to: admin.email, html: emailcontent, text: emailcontent })
+        }
 
         await user.destroy()
 

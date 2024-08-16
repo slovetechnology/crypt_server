@@ -63,7 +63,7 @@ exports.UpdateDeposits = async (req, res) => {
 
                 const content = `<div font-size: 1rem;>Hello ${depositUser.username}, your deposit of $${deposit.amount} has been successfully confirmed.</div> `
 
-                await sendMail({ from: 'support@secureinvest.org', subject: 'Deposit Confirmation', to: depositUser.email, html: content, text: content })
+                await sendMail({ subject: 'Deposit Confirmation', to: depositUser.email, html: content, text: content })
             }
         }
 
@@ -133,7 +133,7 @@ exports.UpdateInvestments = async (req, res) => {
 
                 const content = `<div font-size: 1rem;>Hello ${investmentUser.username}, your profits generated for the investment of $${investment.amount} ${investment.trading_plan} has been completed, you can now succesfully claim to your wallet.</div> `
 
-                await sendMail({ from: 'support@secureinvest.org', subject: 'Profit Completed', to: investmentUser.email, html: content, text: content })
+                await sendMail({ subject: 'Profit Completed', to: investmentUser.email, html: content, text: content })
             }
         }
 
@@ -268,7 +268,7 @@ exports.UpdateWithdrawals = async (req, res) => {
 
                 const content = `<div font-size: 1rem;>Hello ${withdrawaluser.username}, your withdrawal of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address} has been confirmed.</div> `
 
-                await sendMail({ from: 'support@secureinvest.org', subject: 'Withdrawal Confirmation', to: withdrawaluser.email, html: content, text: content })
+                await sendMail({ subject: 'Withdrawal Confirmation', to: withdrawaluser.email, html: content, text: content })
             }
         }
 
@@ -293,7 +293,6 @@ exports.UpdateWithdrawals = async (req, res) => {
         return res.json({ status: 200, msg: error.message })
     }
 }
-
 
 exports.CreateAdminWallets = async (req, res) => {
     try {
@@ -666,7 +665,7 @@ exports.UpdateTaxes = async (req, res) => {
 
                 const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
 
-                await sendMail({ from: 'support@secureinvest.org', subject: 'Tax Cleared', to: taxPayer.email, html: content, text: content })
+                await sendMail({ subject: 'Tax Cleared', to: taxPayer.email, html: content, text: content })
             }
         }
 
@@ -693,7 +692,7 @@ exports.UpdateTaxes = async (req, res) => {
                 URL: '/dashboard/tax-payment',
             })
 
-            await sendMail({ from: 'support@secureinvest.org', subject: 'Support Team', to: taxPayer.email, html: message, text: message })
+            await sendMail({ subject: 'Support Team', to: taxPayer.email, html: message, text: message })
         }
 
         tax.status = status

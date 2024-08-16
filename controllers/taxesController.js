@@ -65,7 +65,9 @@ exports.PayTax = async (req, res) => {
 
             const content = `<div font-size: 1rem;>Admin, ${taxPayer} just made a tax payment amount of $${amount} to ${crypto} deposit address.</div> `
 
-            await sendMail({ from: 'support@secureinvest.org', subject: 'User Tax Payment', to: admin.email, html: content, text: content })
+            if (admin) {
+                await sendMail({ subject: 'User Tax Payment', to: admin.email, html: content, text: content })
+            }
         }
 
         const notifications = await Notification.findAll({
