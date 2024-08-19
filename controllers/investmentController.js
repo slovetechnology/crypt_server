@@ -9,8 +9,8 @@ const User = require('../models').users
 
 exports.CreateInvestment = async (req, res) => {
     try {
-        const { amount, trading_plan, investmentUser } = req.body
-        if (!amount || !trading_plan || !investmentUser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, trading_plan, duration, duration_type, investmentUser } = req.body
+        if (!amount || !trading_plan || !duration || !duration_type || !investmentUser) return res.json({ status: 404, msg: `Incomplete request found` })
 
         if (trading_plan === 'test run') {
             const investments = await Investment.findAll({ where: { user: req.user } })
@@ -23,8 +23,6 @@ exports.CreateInvestment = async (req, res) => {
             user: req.user,
             amount,
             trading_plan,
-            profit: 0,
-            bonus: 0,
         })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })

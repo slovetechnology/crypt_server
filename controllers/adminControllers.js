@@ -599,7 +599,7 @@ exports.GetAdminStore = async (req, res) => {
 exports.UpdateAdminStore = async (req, res) => {
 
     try {
-        const { referral_bonus, tax_percentage } = req.body
+        const { referral_bonus, tax_percentage, deposit_minimum } = req.body
 
         const adminStore = await AdminStore.findOne({
         })
@@ -610,6 +610,9 @@ exports.UpdateAdminStore = async (req, res) => {
         }
         if (tax_percentage) {
             adminStore.tax_percentage = tax_percentage
+        }
+        if (deposit_minimum) {
+            adminStore.deposit_minimum = deposit_minimum
         }
 
         await adminStore.save()
