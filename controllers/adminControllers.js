@@ -262,7 +262,7 @@ exports.UpdateWithdrawals = async (req, res) => {
                 await Notification.create({
                     user: user_id,
                     title: `withdrawal confirmed`,
-                    content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been confirmed.`,
+                    content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been successfully processed.`,
                     URL: '/dashboard/withdraw',
                 })
 
@@ -456,8 +456,8 @@ exports.DeleteWallet = async (req, res) => {
 exports.CreateTradingPlan = async (req, res) => {
     try {
 
-        const { title, price_start, price_limit, profit_percentage, plan_bonus, duration, duration_type } = req.body
-        if (!title || !price_start || !price_limit || !profit_percentage || !plan_bonus || !duration || !duration_type) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { title, price_start, price_limit, profit_return, plan_bonus, duration, duration_type } = req.body
+        if (!title || !price_start || !price_limit || !profit_return || !plan_bonus || !duration || !duration_type) return res.json({ status: 404, msg: `Incomplete request found` })
         const findPlan = await TradingPlans.findOne({ where: { title: title } })
         if (findPlan) return res.json({ status: 404, msg: `${title} already exists` })
 
@@ -465,7 +465,7 @@ exports.CreateTradingPlan = async (req, res) => {
             title,
             price_start,
             price_limit,
-            profit_percentage,
+            profit_return,
             plan_bonus,
             duration,
             duration_type
@@ -490,7 +490,7 @@ exports.GetTradingPlans = async (req, res) => {
 
 exports.UpdateTradingPlan = async (req, res) => {
     try {
-        const { plan_id, title, price_start, price_limit, profit_percentage, plan_bonus, duration, duration_type } = req.body
+        const { plan_id, title, price_start, price_limit, profit_return, plan_bonus, duration, duration_type } = req.body
         if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
@@ -504,8 +504,8 @@ exports.UpdateTradingPlan = async (req, res) => {
         if (price_limit) {
             tradingPlan.price_limit = price_limit
         }
-        if (profit_percentage) {
-            tradingPlan.profit_percentage = profit_percentage
+        if (profit_return) {
+            tradingPlan.profit_return = profit_return
         }
         if (plan_bonus) {
             tradingPlan.plan_bonus = plan_bonus
@@ -662,7 +662,7 @@ exports.UpdateTaxes = async (req, res) => {
                 await Notification.create({
                     user: user_id,
                     title: `tax received`,
-                    content: `Your tax payment amount of $${tax.amount} has been received and your taxes cleared.`,
+                    content: `Your tax payment amount of $${tax.amount} has been received and the tax cleared.`,
                     URL: '/dashboard/tax-payment',
                 })
 
