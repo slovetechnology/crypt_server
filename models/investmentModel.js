@@ -6,6 +6,8 @@ module.exports = (sequelize, DataTypes) => {
         profit: {type: DataTypes.FLOAT, defaultValue: 0},
         bonus: {type: DataTypes.FLOAT, defaultValue: 0},
         status: {type: DataTypes.STRING, defaultValue: 'running'},
-        claim: {type: DataTypes.STRING, defaultValue: 'false'}
+        claim: {type: DataTypes.STRING, defaultValue: 'false'},
+        endDate: {type: DataTypes.STRING},
+        topupDuration: {type: DataTypes.STRING},
     })
 }

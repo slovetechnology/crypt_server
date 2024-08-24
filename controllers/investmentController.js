@@ -4,6 +4,7 @@ const Notification = require('../models').notifications
 const Up = require('../models').ups
 const Wallet = require('../models').wallets
 const User = require('../models').users
+const moment = require('moment')
 
 
 
@@ -19,10 +20,15 @@ exports.CreateInvestment = async (req, res) => {
             if (investments.length > 0) return res.json({ status: 404, msg: `Test Run is for first investment only` })
         }
 
+        const topupDuration = moment().add(parseFloat(0.5), `${duration_type}`)
+        const endDate = moment().add(parseFloat(duration), `${duration_type}`)
+
         await Investment.create({
             user: req.user,
             amount,
             trading_plan,
+            endDate: `${endDate}`,
+            topupDuration: `${topupDuration}`
         })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
@@ -37,14 +43,15 @@ exports.CreateInvestment = async (req, res) => {
             URL: '/dashboard/investment',
         })
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `investment alert`,
-                content: `Hello Admin, ${investmentUser} just made an investment of $${amount} ${trading_plan}, trading begins now.`,
-                role: 'admin',
-                URL: '/admin-controls/investments',
+        const admins = await User.findAll({ where: { role: 'admin' } })
+        if (admins) {
+            admins.map(async ele => {
+                await Notification.create({
+                    user: ele.id,
+                    title: `investment alert`,
+                    content: `Hello Admin, ${investmentUser} just made an investment of $${amount} ${trading_plan}, trading begins now.`,
+                    URL: '/admin-controls/investments',
+                })
             })
         }
 

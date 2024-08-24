@@ -26,21 +26,20 @@ exports.MakeWithdrawal = async (req, res) => {
             URL: '/dashboard/withdraw',
         })
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `withdrawal alert`,
-                content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`,
-                role: 'admin',
-                URL: '/admin-controls/withdrawals',
+        const admins = await User.findAll({ where: { role: 'admin' } })
+        if (admins) {
+            admins.map(async ele => {
+                await Notification.create({
+                    user: ele.id,
+                    title: `withdrawal alert`,
+                    content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`,
+                    URL: '/admin-controls/withdrawals',
+                })
+
+                const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
+
+                await sendMail({ subject: 'Withdrawal Alert', to: ele.email, html: content, text: content })
             })
-
-            const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
-
-            if (admin) {
-                await sendMail({ subject: 'Withdrawal Alert', to: admin.email, html: content, text: content })
-            }
         }
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })

@@ -74,21 +74,19 @@ exports.CreateAccount = async (req, res) => {
             URL: '/dashboard/deposit',
         })
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `${username} joins AI Algo`,
-                content: `Hello Admin, you have a new user as ${full_name} joins the system.`,
-                role: 'admin',
-                URL: '/admin-controls/users',
+        const admins = await User.findAll({ where: { role: 'admin' } })
+        if (admins) {
+            admins.map(async ele => {
+                await Notification.create({
+                    user: ele.id,
+                    title: `${username} joins AI Algo`,
+                    content: `Hello Admin, you have a new user as ${full_name} joins the system.`,
+                    URL: '/admin-controls/users',
+                })
             })
-        }
+            const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
 
-        const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
-
-        if (admin) {
-            await sendMail({ subject: 'New User Alert', to: admin.email, html: emailcontent, text: emailcontent })
+            await sendMail({ subject: 'New User Alert', to: ele.email, html: emailcontent, text: emailcontent })
         }
 
         const otp = otpGenerator.generate(6, { specialChars: false })
@@ -294,7 +292,6 @@ exports.UpdateProfile = async (req, res) => {
                 fs.unlinkSync(currentImagePath)
             }
 
-
             if (!fs.existsSync(filePath)) {
                 fs.mkdirSync(filePath)
             }
@@ -304,9 +301,7 @@ exports.UpdateProfile = async (req, res) => {
             } else {
                 imageName = `${slug(user.username, '-')}.jpg`
             }
-        }
 
-        if (image) {
             await image.mv(`${filePath}/${imageName}`)
         }
 
@@ -348,18 +343,20 @@ exports.ContactFromUsers = async (req, res) => {
         if (!email) return res.json({ status: 404, msg: `Enter your email account` })
         if (!message) return res.json({ status: 404, msg: `Enter your message` })
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
+        const admins = await User.findAll({ where: { role: 'admin' } })
 
         const content = `
         <div style="color: #E96E28">From: ${email}</div>
         <div style="margin-top: 1rem; color: #E96E28">Message:</div>
         <div style="margin-top: 0.5rem">${message}</div>
         `
-        if (admin) {
-            await sendMail({ subject: 'Contact From Ai Algo User', to: admin.email, html: content, text: content })
+        if (admins) {
+            admins.map(async ele => {
+                await sendMail({ subject: 'Contact From Ai Algo User', to: ele.email, html: content, text: content })
+            })
         }
 
-        return res.json({ status: 200, msg: 'Your message has been successfullly delivered' })
+        return res.json({ status: 200, msg: 'Message successfully delivered' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -447,21 +444,20 @@ exports.DeleteAcount = async (req, res) => {
             await ups.destroy()
         }
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `${user.username} leaves AI Algo`,
-                content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
-                role: 'admin',
-                URL: '/admin-controls/users',
+        const admins = await User.findAll({ where: { role: 'admin' } })
+        if (admins) {
+            admins.map(async ele => {
+                await Notification.create({
+                    user: ele.id,
+                    title: `${user.username} leaves AI Algo`,
+                    content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
+                    URL: '/admin-controls/users',
+                })
             })
-        }
 
-        const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
+            const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
 
-        if (admin) {
-            await sendMail({ subject: 'User Leaves AI Algo', to: admin.email, html: emailcontent, text: emailcontent })
+            await sendMail({ subject: 'User Leaves AI Algo', to: ele.email, html: emailcontent, text: emailcontent })
         }
 
         await user.destroy()

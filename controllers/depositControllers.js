@@ -23,22 +23,21 @@ exports.CreateDeposit = async (req, res) => {
             URL: '/dashboard/deposit',
         })
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
+        const admins = await User.findAll({ where: { role: 'admin' } })
 
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `deposit alert`,
-                content: `Hello Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.`,
-                role: 'admin',
-                URL: '/admin-controls',
+        if (admins) {
+            admins.map(async ele => {
+                await Notification.create({
+                    user: ele.id,
+                    title: `deposit alert`,
+                    content: `Hello Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.`,
+                    URL: '/admin-controls',
+                })
+
+                const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.</div> `
+
+                await sendMail({ subject: 'Deposit Alert', to: ele.email, html: content, text: content })
             })
-
-            const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.</div> `
-
-            if (admin) {
-                await sendMail({ subject: 'Deposit Alert', to: admin.email, html: content, text: content })
-            }
         }
 
         const notifications = await Notification.findAll({

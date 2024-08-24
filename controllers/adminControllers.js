@@ -8,10 +8,14 @@ const AdminWallet = require('../models').admin_wallets
 const TradingPlans = require('../models').trading_plans
 const AdminStore = require('../models').admin_store
 const Tax = require('../models').taxes
+const Kyc = require('../models').kyc
 const fs = require('fs')
 const slug = require('slug')
 const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
+var cron = require('node-cron');
+const moment = require('moment')
+
 
 
 exports.AllDeposits = async (req, res) => {
@@ -68,6 +72,7 @@ exports.UpdateDeposits = async (req, res) => {
         }
 
         if (deposit.status !== 'failed') {
+
             if (status === 'failed') {
 
                 await Notification.create({
@@ -122,6 +127,7 @@ exports.UpdateInvestments = async (req, res) => {
         if (!investment) return res.json({ status: 400, msg: 'Investment not found' })
 
         if (investment.status !== 'completed') {
+
             if (status === 'completed') {
 
                 await Notification.create({
@@ -153,36 +159,82 @@ exports.UpdateInvestments = async (req, res) => {
     }
 }
 
-
 exports.AllUsers = async (req, res) => {
     try {
+        const admin = await User.findOne({ where: { id: req.user } })
+        let allusers;
 
-        const users = await User.findAll({
-            where: { role: 'user' },
-            order: [['createdAt', 'DESC']]
-        })
+        if (admin.id !== 1) {
+            allusers = await User.findAll({
+                where: { role: 'user' },
+                order: [['createdAt', 'DESC']],
+                include: [
+                    {
+                        model: Kyc,
+                        as: 'kycUser',
+                    },
+                ],
+            })
 
-        return res.json({ status: 200, msg: users })
+        } else {
+            allusers = await User.findAll({
+                order: [['createdAt', 'DESC']],
+                include: [
+                    {
+                        model: Kyc,
+                        as: 'kycUser',
+                    },
+                ],
+            })
+        }
+
+        return res.json({ status: 200, msg: allusers })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
 }
 
-
-exports.Suspend_Unsuspend_User = async (req, res) => {
+exports.UpdateUsers = async (req, res) => {
 
     try {
-        const { user_id, password } = req.body
-        const user = await User.findOne({ where: { id: user_id } })
-        if (!user) return res.json({ status: 400, msg: 'User not found' })
-        const findAdmin = await User.findOne({ where: { id: req.user } })
-        if (!findAdmin) return res.json({ status: 400, msg: `Admin not found` })
-        if (password !== findAdmin.password) return res.json({ status: 404, msg: `Invalid password` })
+        const { user_id, password, fundAmount, minimumAmount } = req.body
 
-        if (user.suspend === 'false') {
-            user.suspend = 'true'
-        } else {
-            user.suspend = 'false'
+        const user = await User.findOne({ where: { id: user_id } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
+
+        if (fundAmount) {
+            const wallet = await Wallet.findOne({ where: { user: user_id } })
+            if (!wallet) return res.json({ status: 404, msg: 'User wallet not found' })
+
+            wallet.balance += fundAmount
+            await wallet.save()
+
+            await Notification.create({
+                user: user_id,
+                title: `wallet funded`,
+                content: `Your account has been funded with $${fundAmount}, check your balance.`,
+                URL: '/dashboard',
+            })
+        }
+
+        if (minimumAmount) {
+            user.withdrawal_minimum = minimumAmount
+        }
+
+        if (password) {
+            const findAdmin = await User.findOne({ where: { id: req.user } })
+            if (!findAdmin) return res.json({ status: 400, msg: `Admin not found` })
+            if (password !== findAdmin.password) return res.json({ status: 404, msg: `Invalid password` })
+
+            if (user.role === 'admin') {
+                if (findAdmin.id !== 1) return res.json({ status: 404, msg: `Unauthorized action` })
+            }
+
+            if (user.suspend === 'false') {
+                user.suspend = 'true'
+            } else {
+                user.suspend = 'false'
+            }
         }
 
         await user.save()
@@ -192,7 +244,6 @@ exports.Suspend_Unsuspend_User = async (req, res) => {
         return res.json({ status: 400, msg: error.message })
     }
 }
-
 
 exports.GetUserFigures = async (req, res) => {
 
@@ -377,6 +428,8 @@ exports.UpdateAdminWallet = async (req, res) => {
             } else {
                 cryptoImgName = `${slug(adminWallet.crypto, '-')}.jpg`
             }
+
+            await crypto_img.mv(`${filePath}/${cryptoImgName}`)
         }
 
         if (qrcode_img) {
@@ -394,12 +447,7 @@ exports.UpdateAdminWallet = async (req, res) => {
             } else {
                 qrCodeImgName = `${slug(adminWallet.network, '-')}.jpg`
             }
-        }
 
-        if (crypto_img) {
-            await crypto_img.mv(`${filePath}/${cryptoImgName}`)
-        }
-        if (qrcode_img) {
             await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
         }
 
@@ -537,51 +585,6 @@ exports.DeleteTradingPlan = async (req, res) => {
         return res.json({ status: 200, msg: 'Trading plan deleted successfully' })
     } catch (error) {
         return res.json({ status: 500, msg: error.message })
-    }
-}
-
-exports.FundUserAccount = async (req, res) => {
-    try {
-        const { user_id, amount } = req.body
-        if (!user_id || !amount) return res.json({ status: 404, msg: `Incomplete request` })
-        const user = await User.findOne({ where: { id: user_id } })
-        if (!user) return res.json({ status: 404, msg: 'User not found' })
-        const wallet = await Wallet.findOne({ where: { user: user_id } })
-        if (!wallet) return res.json({ status: 404, msg: 'User wallet not found' })
-
-        wallet.balance += amount
-        await wallet.save()
-
-        await Notification.create({
-            user: user_id,
-            title: `wallet funded`,
-            content: `Your account has been funded with $${amount}, check your balance.`,
-            URL: '/dashboard',
-        })
-
-        return res.json({ status: 200, msg: 'User account funded successfully' })
-    } catch (error) {
-        res.json({ status: 500, msg: error.message })
-    }
-}
-
-exports.UpdateUserWithdrawalMinimum = async (req, res) => {
-
-    try {
-        const { user_id, withdrawal_minimum } = req.body
-        if (!withdrawal_minimum) return res.json({ status: 400, msg: 'Enter user withdrawal minimum' })
-        const user = await User.findOne({ where: { id: user_id } })
-        if (!user) return res.json({ status: 400, msg: 'User not found' })
-
-        if (withdrawal_minimum) {
-            user.withdrawal_minimum = withdrawal_minimum
-        }
-
-        await user.save()
-
-        return res.json({ status: 200, msg: 'User withdrawal minimum updated' })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
     }
 }
 
@@ -789,3 +792,94 @@ exports.AdminCreateAccount = async (req, res) => {
         return res.json({ status: 400, msg: error.message })
     }
 }
+
+exports.UpdateKYC = async (req, res) => {
+
+    try {
+        const { user_id, status, message, kyc_id } = req.body
+        const kycUser = await User.findOne({ where: { id: user_id } })
+        if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
+        const kyc = await Kyc.findOne({ where: { id: kyc_id } })
+        if (!kyc) return res.json({ status: 400, msg: 'KYC not found' })
+
+        if (kyc.status !== 'verified') {
+
+            if (status === 'verified') {
+
+                kycUser.kyc_verified = 'true'
+                await kycUser.save()
+
+                await Notification.create({
+                    user: user_id,
+                    title: `KYC verified`,
+                    content: `Your KYC details submitted has been successfully verified.`,
+                    URL: '/dashboard/verify-account/kyc',
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${kycUser.username}, Your KYC details submitted has been successfully verified.</div> `
+
+                await sendMail({ subject: 'KYC Verification', to: kycUser.email, html: content, text: content })
+            }
+        }
+
+        if (kyc.status !== 'failed') {
+
+            if (status === 'failed') {
+
+                if (!message) return res.json({ status: 400, msg: 'Provide a reason for failed verification' })
+
+                await Notification.create({
+                    user: user_id,
+                    title: `KYC verification failed`,
+                    content: message,
+                    status: 'failed',
+                    URL: '/dashboard/verify-account/kyc',
+                })
+
+                await sendMail({ subject: 'KYC Verification', to: kycUser.email, html: message, text: message })
+            }
+        }
+
+        kyc.status = status
+
+        await kyc.save()
+
+        return res.json({ status: 200, msg: 'KYC updated successfully' })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+
+cron.schedule('* * * * *', async () => {
+
+    const investments = await Investment.findAll({ where: { status: 'running' } })
+
+    investments.map(async ele => {
+
+        const tradingPlan = await TradingPlans.findOne({ where: { title: ele.trading_plan } })
+
+        const TotalProfit = ele.amount * tradingPlan.profit_return / 100
+        const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
+        const topupProfit = TotalProfit / tradingPlan.duration
+        const topupBonus = TotalBonus / tradingPlan.duration
+
+            if (moment().isSameOrAfter(new Date(ele.topupDuration))) {
+                
+                if (ele.profit < TotalProfit) {
+
+                    ele.profit += parseFloat(topupProfit.toFixed(1))
+                    ele.bonus += parseFloat(topupBonus.toFixed(1))
+
+                    const newTopupDuration = moment().add(parseFloat(0.5), `${tradingPlan.duration_type}`)
+                    ele.topupDuration = `${newTopupDuration}`
+
+                    if (ele.profit >= TotalProfit) {
+                        ele.status = 'completed'
+                    }
+
+                    await ele.save()
+                }
+            }
+    })
+})

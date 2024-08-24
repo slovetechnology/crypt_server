@@ -53,21 +53,20 @@ exports.PayTax = async (req, res) => {
             URL: '/dashboard/tax-payment',
         })
 
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `tax payment alert`,
-                content: `Hello Admin, ${taxPayer} just made a tax payment amount of $${amount} to ${crypto} deposit address.`,
-                role: 'admin',
-                URL: '/admin-controls/taxes',
+        const admins = await User.findAll({ where: { role: 'admin' } })
+        if (admins) {
+            admins.map(async ele => {
+                await Notification.create({
+                    user: ele.id,
+                    title: `tax payment alert`,
+                    content: `Hello Admin, ${taxPayer} just made a tax payment amount of $${amount} to ${crypto} deposit address.`,
+                    URL: '/admin-controls/taxes',
+                })
+
+                const content = `<div font-size: 1rem;>Admin, ${taxPayer} just made a tax payment amount of $${amount} to ${crypto} deposit address.</div> `
+
+                await sendMail({ subject: 'User Tax Payment', to: ele.email, html: content, text: content })
             })
-
-            const content = `<div font-size: 1rem;>Admin, ${taxPayer} just made a tax payment amount of $${amount} to ${crypto} deposit address.</div> `
-
-            if (admin) {
-                await sendMail({ subject: 'User Tax Payment', to: admin.email, html: content, text: content })
-            }
         }
 
         const notifications = await Notification.findAll({
