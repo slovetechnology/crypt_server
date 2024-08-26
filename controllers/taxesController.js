@@ -2,8 +2,6 @@ const sendMail = require('../config/emailConfig')
 const Tax = require('../models').taxes
 const User = require('../models').users
 const Notification = require('../models').notifications
-const fs = require('fs')
-const slug = require('slug')
 
 
 exports.UserTaxes = async (req, res) => {
@@ -24,23 +22,9 @@ exports.PayTax = async (req, res) => {
 
         const { amount, crypto, deposit_address, taxPayer } = req.body
         if (!amount || !crypto || !deposit_address || !taxPayer) return res.json({ status: 404, msg: `Incomplete request found` })
-        if (!req.files) return res.json({ status: 404, msg: `Attach proof of payment` })
-        const image = req.files.payment_proof
-
-        const filePath = './public/taxPayment'
-        if (!fs.existsSync(filePath)) {
-            fs.mkdirSync(filePath)
-        }
-
-        const slugData = slug(taxPayer, '-')
-        const date = new Date()
-        const imageName = `${slugData}-${date.getTime()}.jpg`
-
-        await image.mv(`${filePath}/${imageName}`)
 
         await Tax.create({
             user: req.user,
-            payment_proof: imageName,
             amount,
             crypto,
             deposit_address

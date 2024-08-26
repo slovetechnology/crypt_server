@@ -83,6 +83,10 @@ exports.UpdateDeposits = async (req, res) => {
                     URL: '/dashboard/deposit',
                 })
             }
+
+            const content = `<div font-size: 1rem;>Hello ${depositUser.username}, confirmation failed. This deposit was not confirmed.</div> `
+
+            await sendMail({ subject: 'Deposit Failed', to: depositUser.email, html: content, text: content })
         }
 
         deposit.status = status
@@ -669,9 +673,9 @@ exports.UpdateTaxes = async (req, res) => {
                     URL: '/dashboard/tax-payment',
                 })
 
-                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
+                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
 
-                await sendMail({ subject: 'Tax Cleared', to: taxPayer.email, html: content, text: content })
+                await sendMail({ subject: 'Tax Received', to: taxPayer.email, html: content, text: content })
             }
         }
 
@@ -686,6 +690,10 @@ exports.UpdateTaxes = async (req, res) => {
                     status: 'failed',
                     URL: '/dashboard/tax-payment',
                 })
+
+                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.</div> `
+
+                await sendMail({ subject: 'Tax Recieval Failed', to: taxPayer.email, html: content, text: content })
             }
         }
 
@@ -796,7 +804,7 @@ exports.AdminCreateAccount = async (req, res) => {
 exports.UpdateKYC = async (req, res) => {
 
     try {
-        const { user_id, status, message, kyc_id } = req.body
+        const { user_id, kyc_id, status, message} = req.body
         const kycUser = await User.findOne({ where: { id: user_id } })
         if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
         const kyc = await Kyc.findOne({ where: { id: kyc_id } })
@@ -836,7 +844,7 @@ exports.UpdateKYC = async (req, res) => {
                     URL: '/dashboard/verify-account/kyc',
                 })
 
-                await sendMail({ subject: 'KYC Verification', to: kycUser.email, html: message, text: message })
+                await sendMail({ subject: 'KYC Verification Failed', to: kycUser.email, html: message, text: message })
             }
         }
 

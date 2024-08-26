@@ -319,8 +319,8 @@ exports.UpdateProfile = async (req, res) => {
         }
         if (old_password) {
 
-            if (!new_password) return res.json({ status: 404, msg: `Enter your new password` })
             if (user.password !== old_password) return res.json({ status: 404, msg: 'Enter your correct old password' })
+            if (!new_password) return res.json({ status: 404, msg: `Enter a new password` })
         }
         if (new_password) {
 
