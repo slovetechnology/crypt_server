@@ -3,6 +3,7 @@ module.exports = (sequelize, DataTypes) => {
         user: {type: DataTypes.INTEGER},
         amount: {type: DataTypes.FLOAT},
         trading_plan: {type: DataTypes.STRING},
+        trading_plan_id: {type: DataTypes.STRING},
         profit: {type: DataTypes.FLOAT, defaultValue: 0},
         bonus: {type: DataTypes.FLOAT, defaultValue: 0},
         status: {type: DataTypes.STRING, defaultValue: 'running'},

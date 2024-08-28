@@ -10,8 +10,8 @@ const moment = require('moment')
 
 exports.CreateInvestment = async (req, res) => {
     try {
-        const { amount, trading_plan, duration, duration_type, investmentUser } = req.body
-        if (!amount || !trading_plan || !duration || !duration_type || !investmentUser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, trading_plan, trading_plan_id, duration, duration_type, investmentUser } = req.body
+        if (!amount || !trading_plan || !trading_plan_id || !duration || !duration_type || !investmentUser) return res.json({ status: 404, msg: `Incomplete request found` })
 
         if (trading_plan === 'test run') {
             const investments = await Investment.findAll({ where: { user: req.user } })
@@ -27,6 +27,7 @@ exports.CreateInvestment = async (req, res) => {
             user: req.user,
             amount,
             trading_plan,
+            trading_plan_id,
             endDate: `${endDate}`,
             topupDuration: `${topupDuration}`
         })
@@ -39,7 +40,7 @@ exports.CreateInvestment = async (req, res) => {
         await Notification.create({
             user: req.user,
             title: `investment success`,
-            content: `You've successfully bought ${trading_plan} for $${amount} from wallet balance, check your investment portfolio as trading begins now.`,
+            content: `You've successfully bought ${trading_plan} plan for $${amount} from wallet balance, check your investment portfolio as trading begins now.`,
             URL: '/dashboard/investment',
         })
 
@@ -49,7 +50,7 @@ exports.CreateInvestment = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `investment alert`,
-                    content: `Hello Admin, ${investmentUser} just made an investment of $${amount} ${trading_plan}, trading begins now.`,
+                    content: `Hello Admin, ${investmentUser} just made an investment of $${amount} ${trading_plan} plan, trading begins now.`,
                     URL: '/admin-controls/investments',
                 })
             })

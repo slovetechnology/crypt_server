@@ -137,11 +137,11 @@ exports.UpdateInvestments = async (req, res) => {
                 await Notification.create({
                     user: user_id,
                     title: `profit completed`,
-                    content: `Profits for your $${investment.amount} ${investment.trading_plan} investment is completed. Check your investment portfolio to claim.`,
+                    content: `Profits for your $${investment.amount} ${investment.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
                     URL: '/dashboard/investment',
                 })
 
-                const content = `<div font-size: 1rem;>Hello ${investmentUser.username}, your profits generated for the investment of $${investment.amount} ${investment.trading_plan} has been completed, you can now succesfully claim to your wallet.</div> `
+                const content = `<div font-size: 1rem;>Hello ${investmentUser.username}, your profits generated for the investment of $${investment.amount} ${investment.trading_plan} plan has been completed, you can now succesfully claim to your wallet.</div> `
 
                 await sendMail({ subject: 'Profit Completed', to: investmentUser.email, html: content, text: content })
             }
@@ -804,7 +804,7 @@ exports.AdminCreateAccount = async (req, res) => {
 exports.UpdateKYC = async (req, res) => {
 
     try {
-        const { user_id, kyc_id, status, message} = req.body
+        const { user_id, kyc_id, status, message } = req.body
         const kycUser = await User.findOne({ where: { id: user_id } })
         if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
         const kyc = await Kyc.findOne({ where: { id: kyc_id } })
@@ -865,15 +865,18 @@ cron.schedule('* * * * *', async () => {
 
     investments.map(async ele => {
 
-        const tradingPlan = await TradingPlans.findOne({ where: { title: ele.trading_plan } })
+        const investmentUser = await User.findOne({ where: { id: ele.user } })
 
-        const TotalProfit = ele.amount * tradingPlan.profit_return / 100
-        const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
-        const topupProfit = TotalProfit / tradingPlan.duration
-        const topupBonus = TotalBonus / tradingPlan.duration
+        const tradingPlan = await TradingPlans.findOne({ where: { id: ele.trading_plan_id } })
+
+        if (tradingPlan) {
+            const TotalProfit = ele.amount * tradingPlan.profit_return / 100
+            const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
+            const topupProfit = TotalProfit / tradingPlan.duration
+            const topupBonus = TotalBonus / tradingPlan.duration
 
             if (moment().isSameOrAfter(new Date(ele.topupDuration))) {
-                
+
                 if (ele.profit < TotalProfit) {
 
                     ele.profit += parseFloat(topupProfit.toFixed(1))
@@ -884,10 +887,23 @@ cron.schedule('* * * * *', async () => {
 
                     if (ele.profit >= TotalProfit) {
                         ele.status = 'completed'
+
+                        await Notification.create({
+                            user: ele.user,
+                            title: `profit completed`,
+                            content: `Profits for your $${ele.amount} ${ele.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
+                            URL: '/dashboard/investment',
+                        })
+
+                        const content = `<div font-size: 1rem;>Hello ${investmentUser.username}, your profits generated for the investment of $${ele.amount} ${ele.trading_plan} plan has been completed, you can now succesfully claim to your wallet.</div> `
+
+                        await sendMail({ subject: 'Profit Completed', to: investmentUser.email, html: content, text: content })
                     }
 
                     await ele.save()
                 }
             }
+        }
+
     })
 })
