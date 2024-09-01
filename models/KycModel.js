@@ -13,7 +13,7 @@ module.exports = (sequelize, DataTypes) => {
         postal: { type: DataTypes.STRING },
         phone_code: { type: DataTypes.STRING },
         phone_number: { type: DataTypes.STRING },
-        ssn: { type: DataTypes.STRING },
+        id_number: { type: DataTypes.STRING },
         valid_id: { type: DataTypes.STRING },
         status: { type: DataTypes.STRING, defaultValue: 'processing' },
     })

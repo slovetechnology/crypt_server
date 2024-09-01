@@ -43,14 +43,23 @@ exports.UpdateDeposits = async (req, res) => {
 
     try {
         const { user_id, status, deposit_id } = req.body
-        const depositUser = await User.findOne({ where: { id: user_id } })
-        if (!depositUser) return res.json({ status: 400, msg: 'Deposit User not found' })
+        if (!user_id, !deposit_id) return res.json({ status: 404, msg: `Invalid request` })
+
         const deposit = await Deposit.findOne({ where: { id: deposit_id } })
         if (!deposit) return res.json({ status: 400, msg: 'Deposit not found' })
+
+        const depositUser = await User.findOne({ where: { id: user_id } })
+        if (!depositUser) return res.json({ status: 400, msg: 'Deposit User not found' })
 
         if (deposit.status !== 'confirmed') {
 
             if (status === 'confirmed') {
+
+                const wallet = await Wallet.findOne({ where: { user: user_id } })
+                if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+                wallet.total_deposit += deposit.amount
+                wallet.balance += deposit.amount
+                await wallet.save()
 
                 await Notification.create({
                     user: user_id,
@@ -59,15 +68,38 @@ exports.UpdateDeposits = async (req, res) => {
                     URL: '/dashboard',
                 })
 
-                const wallet = await Wallet.findOne({ where: { user: user_id } })
-                if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
-                wallet.total_deposit += deposit.amount
-                wallet.balance += deposit.amount
-                await wallet.save()
-
                 const content = `<div font-size: 1rem;>Hello ${depositUser.username}, your deposit of $${deposit.amount} has been successfully confirmed.</div> `
 
                 await sendMail({ subject: 'Deposit Confirmation', to: depositUser.email, html: content, text: content })
+
+                const UserDeposits = await Deposit.findAll({ where: { user: user_id } })
+                if (UserDeposits.length === 1) {
+                    const findMyReferral = await User.findOne({ where: { referral_id: depositUser.my_referral } })
+
+                    if (findMyReferral) {
+                        const myReferralWallet = await Wallet.findOne({ where: { user: findMyReferral.id } })
+
+                        if (myReferralWallet) {
+                            const adminStore = await AdminStore.findOne({
+                            })
+
+                            if (adminStore) {
+                                const referralBonus = deposit.amount * adminStore.referral_bonus_percentage / 100
+
+                                myReferralWallet.referral += referralBonus
+                                myReferralWallet.balance += referralBonus
+                                await myReferralWallet.save()
+
+                                await Notification.create({
+                                    user: findMyReferral.id,
+                                    title: `referral bonus`,
+                                    content: `Your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral; "${depositUser.username}" first deposit. Thank you for introducing more people to our system.`,
+                                    URL: '/dashboard',
+                                })
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -125,10 +157,13 @@ exports.UpdateInvestments = async (req, res) => {
 
     try {
         const { user_id, status, investment_id, profit, bonus, } = req.body
-        const investmentUser = await User.findOne({ where: { id: user_id } })
-        if (!investmentUser) return res.json({ status: 400, msg: 'Investment User not found' })
+        if (!user_id, !investment_id) return res.json({ status: 404, msg: `Invalid request` })
+
         const investment = await Investment.findOne({ where: { id: investment_id } })
         if (!investment) return res.json({ status: 400, msg: 'Investment not found' })
+
+        const investmentUser = await User.findOne({ where: { id: user_id } })
+        if (!investmentUser) return res.json({ status: 400, msg: 'Investment User not found' })
 
         if (investment.status !== 'completed') {
 
@@ -202,6 +237,7 @@ exports.UpdateUsers = async (req, res) => {
 
     try {
         const { user_id, password, fundAmount, minimumAmount } = req.body
+        if (!user_id) return res.json({ status: 404, msg: `Provide a user id` })
 
         const user = await User.findOne({ where: { id: user_id } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
@@ -254,6 +290,7 @@ exports.GetUserFigures = async (req, res) => {
     try {
         const { user_id } = req.body
         if (!user_id) return res.json({ status: 404, msg: `Provide a user id` })
+
         const user = await User.findOne({ where: { id: user_id } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
 
@@ -262,12 +299,12 @@ exports.GetUserFigures = async (req, res) => {
         })
 
         const userFigures = {
-            total_investment: 0,
+            total_deposit: 0,
             wallet_balance: 0
         }
 
         userdeposit.map(item => {
-            userFigures.total_investment += item.amount
+            userFigures.total_deposit += item.amount
         })
 
         const wallet = await Wallet.findOne({ where: { user: user_id } })
@@ -305,10 +342,13 @@ exports.AllWithdrawals = async (req, res) => {
 exports.UpdateWithdrawals = async (req, res) => {
     try {
         const { user_id, status, message, withdrawal_id } = req.body
-        const withdrawaluser = await User.findOne({ where: { id: user_id } })
-        if (!withdrawaluser) return res.json({ status: 400, msg: 'Withdrawal user not found' })
+        if (!user_id, !withdrawal_id) return res.json({ status: 404, msg: `Invalid request` })
+
         const withdrawal = await Withdrawal.findOne({ where: { id: withdrawal_id } })
         if (!withdrawal) return res.json({ status: 400, msg: 'Withdrawal not found' })
+
+        const withdrawaluser = await User.findOne({ where: { id: user_id } })
+        if (!withdrawaluser) return res.json({ status: 400, msg: 'Withdrawal user not found' })
 
         if (withdrawal.status !== 'confirmed') {
 
@@ -404,6 +444,7 @@ exports.UpdateAdminWallet = async (req, res) => {
     try {
         const { crypto, network, address, wallet_id } = req.body
         if (!wallet_id) return res.json({ status: 404, msg: `Provide Wallet id` })
+
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
@@ -483,6 +524,7 @@ exports.DeleteWallet = async (req, res) => {
     try {
         const { wallet_id } = req.body
         if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
+
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
@@ -544,6 +586,7 @@ exports.UpdateTradingPlan = async (req, res) => {
     try {
         const { plan_id, title, price_start, price_limit, profit_return, plan_bonus, duration, duration_type } = req.body
         if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
+
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
 
@@ -581,6 +624,7 @@ exports.DeleteTradingPlan = async (req, res) => {
     try {
         const { plan_id } = req.body
         if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
+
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
 
@@ -606,14 +650,14 @@ exports.GetAdminStore = async (req, res) => {
 exports.UpdateAdminStore = async (req, res) => {
 
     try {
-        const { referral_bonus, tax_percentage, deposit_minimum } = req.body
+        const { referral_bonus_percentage, tax_percentage, deposit_minimum } = req.body
 
         const adminStore = await AdminStore.findOne({
         })
         if (!adminStore) return res.json({ status: 400, msg: 'Admin Store not found' })
 
-        if (referral_bonus) {
-            adminStore.referral_bonus = referral_bonus
+        if (referral_bonus_percentage) {
+            adminStore.referral_bonus_percentage = referral_bonus_percentage
         }
         if (tax_percentage) {
             adminStore.tax_percentage = tax_percentage
@@ -657,10 +701,13 @@ exports.AllTaxes = async (req, res) => {
 exports.UpdateTaxes = async (req, res) => {
     try {
         const { user_id, status, message, tax_id } = req.body
-        const taxPayer = await User.findOne({ where: { id: user_id } })
-        if (!taxPayer) return res.json({ status: 400, msg: 'Tax Payer not found' })
+        if (!user_id, !tax_id) return res.json({ status: 404, msg: `Invalid request` })
+
         const tax = await Tax.findOne({ where: { id: tax_id } })
         if (!tax) return res.json({ status: 400, msg: 'tax not found' })
+
+        const taxPayer = await User.findOne({ where: { id: user_id } })
+        if (!taxPayer) return res.json({ status: 400, msg: 'Tax Payer not found' })
 
         if (tax.status !== 'received') {
 
@@ -722,7 +769,7 @@ exports.UpdateTaxes = async (req, res) => {
 exports.AdminCreateAccount = async (req, res) => {
     try {
         const { full_name, username, email, country, country_flag, password, role } = req.body
-        if (!full_name) return res.json({ status: 404, msg: `Your full name is required` })
+        if (!full_name) return res.json({ status: 404, msg: `Full name is required` })
         if (!username) return res.json({ status: 404, msg: `Username is required` })
         if (!email) return res.json({ status: 404, msg: `Email address is required` })
         if (!country) return res.json({ status: 404, msg: `Country is required` })
@@ -805,10 +852,13 @@ exports.UpdateKYC = async (req, res) => {
 
     try {
         const { user_id, kyc_id, status, message } = req.body
-        const kycUser = await User.findOne({ where: { id: user_id } })
-        if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
+        if (!user_id, !kyc_id) return res.json({ status: 404, msg: `Invalid request` })
+
         const kyc = await Kyc.findOne({ where: { id: kyc_id } })
         if (!kyc) return res.json({ status: 400, msg: 'KYC not found' })
+
+        const kycUser = await User.findOne({ where: { id: user_id } })
+        if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
 
         if (kyc.status !== 'verified') {
 

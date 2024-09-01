@@ -9,10 +9,11 @@ module.exports = (sequelize, DataTypes) => {
         country: { type: DataTypes.STRING },
         referral_id: { type: DataTypes.STRING},
         email_verified: { type: DataTypes.STRING, defaultValue: 'false' },
-        kyc_verified: { type: DataTypes.STRING, defaultValue: 'unverified' },
+        kyc_verified: { type: DataTypes.STRING, defaultValue: 'false' },
         resetcode: { type: DataTypes.STRING, allowNull: true },
         password: { type: DataTypes.STRING },
         withdrawal_minimum: { type: DataTypes.FLOAT, defaultValue: 100 },
         suspend: { type: DataTypes.STRING, defaultValue: 'false' },
+        my_referral: { type: DataTypes.STRING, allowNull: true}
     })
 }

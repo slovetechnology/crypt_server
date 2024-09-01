@@ -20,8 +20,8 @@ exports.UserkYC = async (req, res) => {
 
 exports.Create_Update_Kyc = async (req, res) => {
     try {
-        const { first_name, last_name, gender, marital_status, country, country_flag, date_of_birth, address, state, postal, phone_code, phone_number, ssn, kycUser } = req.body
-        if (!first_name || !last_name || !gender || !marital_status || !country || !country_flag || !date_of_birth || !address || !state || !postal || !phone_code || !phone_number || !ssn || !kycUser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { first_name, last_name, gender, marital_status, country, country_flag, date_of_birth, address, state, postal, phone_code, phone_number, id_number, kycUser } = req.body
+        if (!first_name || !last_name || !gender || !marital_status || !country || !country_flag || !date_of_birth || !address || !state || !postal || !phone_code || !phone_number || !id_number || !kycUser) return res.json({ status: 404, msg: `Incomplete request found` })
 
         const filePath = './public/identity'
         const date = new Date()
@@ -56,7 +56,7 @@ exports.Create_Update_Kyc = async (req, res) => {
                 postal,
                 phone_code,
                 phone_number,
-                ssn
+                id_number
             })
 
             await Notification.create({
@@ -109,12 +109,12 @@ exports.Create_Update_Kyc = async (req, res) => {
             kyc.marital_status = marital_status
             kyc.country = country
             kyc.country_flag = country_flag,
-                kyc.postal = postal
+            kyc.postal = postal
             kyc.phone_code = phone_code
             kyc.phone_number = phone_number
             kyc.state = state
             kyc.address = address
-            kyc.ssn = ssn
+            kyc.id_number = id_number
             kyc.date_of_birth = date_of_birth
             kyc.status = 'processing'
 

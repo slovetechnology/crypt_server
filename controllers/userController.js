@@ -8,10 +8,12 @@ const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
 const Up = require('../models').ups
 const Tax = require('../models').taxes
+const Kyc = require('../models').kyc
 const AdminStore = require('../models').admin_store
 const jwt = require('jsonwebtoken')
 const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
+
 
 exports.CreateAccount = async (req, res) => {
     try {
@@ -61,6 +63,7 @@ exports.CreateAccount = async (req, res) => {
             country,
             referral_id: myReferralId,
             password,
+            my_referral: referral_code ? referral_code : null
         })
 
         await Wallet.create({
@@ -83,10 +86,11 @@ exports.CreateAccount = async (req, res) => {
                     content: `Hello Admin, you have a new user as ${full_name} joins the system.`,
                     URL: '/admin-controls/users',
                 })
-            })
-            const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
 
-            await sendMail({ subject: 'New User Alert', to: ele.email, html: emailcontent, text: emailcontent })
+                const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
+
+                await sendMail({ subject: 'New User Alert', to: ele.email, html: emailcontent, text: emailcontent })
+            })
         }
 
         const otp = otpGenerator.generate(6, { specialChars: false })
@@ -105,27 +109,7 @@ exports.CreateAccount = async (req, res) => {
             })
         }
 
-        if (referral_code) {
-            const findMyReferral = await User.findOne({ where: { referral_id: referral_code } })
-            const wallet = await Wallet.findOne({ where: { user: findMyReferral.id } })
-
-            if (wallet) {
-                if (adminStore) {
-                    wallet.referral += adminStore.referral_bonus
-                    wallet.balance += adminStore.referral_bonus
-                    await wallet.save()
-
-                    await Notification.create({
-                        user: findMyReferral.id,
-                        title: `referral bonus`,
-                        content: `Your account has been credited with $${adminStore.referral_bonus} from a referral.`,
-                        URL: '/dashboard',
-                    })
-                }
-            }
-        }
-
-        return res.json({ status: 200, msg: `Account created successfully` })
+        return res.json({ status: 200, msg: 'Account created successfully' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -382,9 +366,25 @@ exports.DeleteAcount = async (req, res) => {
             where: { user: req.user }
         })
 
+        if (wallet) {
+            await wallet.destroy()
+        }
+
         const ups = await Up.findOne({
             where: { user: req.user },
         })
+
+        if (ups) {
+            await ups.destroy()
+        }
+
+        const kyc = await Kyc.findOne({
+            where: { user: req.user },
+        })
+
+        if (kyc) {
+            await kyc.destroy()
+        }
 
         const deposits = await Deposit.findAll({
             where: { user: req.user },
@@ -436,14 +436,6 @@ exports.DeleteAcount = async (req, res) => {
             })
         }
 
-        if (wallet) {
-            await wallet.destroy()
-        }
-
-        if (ups) {
-            await ups.destroy()
-        }
-
         const admins = await User.findAll({ where: { role: 'admin' } })
         if (admins) {
             admins.map(async ele => {
@@ -453,11 +445,11 @@ exports.DeleteAcount = async (req, res) => {
                     content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
                     URL: '/admin-controls/users',
                 })
+
+                const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
+
+                await sendMail({ subject: 'User Leaves AI Algo', to: ele.email, html: emailcontent, text: emailcontent })
             })
-
-            const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
-
-            await sendMail({ subject: 'User Leaves AI Algo', to: ele.email, html: emailcontent, text: emailcontent })
         }
 
         await user.destroy()
@@ -482,10 +474,14 @@ exports.UserWallet = async (req, res) => {
 
 exports.UserUp = async (req, res) => {
     try {
+        let userUps = {}
         const ups = await Up.findOne({ where: { user: req.user } })
-        if (!ups) return res.json({ status: 404, msg: `User ups not found` })
 
-        return res.json({ status: 200, msg: ups })
+        if (ups) {
+            userUps = ups
+        }
+
+        return res.json({ status: 200, msg: userUps })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
