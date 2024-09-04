@@ -109,29 +109,28 @@ exports.ClaimInvestment = async (req, res) => {
         const ups = await Up.findOne({ where: { user: req.user } })
         if (!ups) return res.json({ status: 404, msg: `User ups not found` })
 
-        if (investment.claim !== 'true') {
-            if (investment.status === 'completed') {
-                wallet.total_profit += investment.profit
-                wallet.total_bonus += investment.bonus
-                let altbalance = investment.amount + investment.profit + investment.bonus
-                wallet.balance += altbalance
-                await wallet.save()
+        if (investment.status !== 'completed') return res.json({ status: 404, msg: 'Profit still running' })
+        if (investment.claim === 'true') return res.json({ status: 404, msg: 'Investment already claimed' })
 
-                ups.new_profit = investment.profit
-                ups.new_bonus = investment.bonus
-                await ups.save()
+        wallet.total_profit += investment.profit
+        wallet.total_bonus += investment.bonus
+        let altbalance = investment.amount + investment.profit + investment.bonus
+        wallet.balance += altbalance
+        await wallet.save()
 
-                investment.claim = 'true'
-                await investment.save()
+        ups.new_profit = investment.profit
+        ups.new_bonus = investment.bonus
+        await ups.save()
 
-                await Notification.create({
-                    user: req.user,
-                    title: `claim success`,
-                    content: `Your $${investment.amount} ${investment.trading_plan} investment, profit and bonus generated has been successfully claimed to your wallet.`,
-                    URL: '/dashboard',
-                })
-            }
-        }
+        investment.claim = 'true'
+        await investment.save()
+
+        await Notification.create({
+            user: req.user,
+            title: `claim success`,
+            content: `Your $${investment.amount} ${investment.trading_plan} plan investment, profit and bonus generated has been successfully claimed to your wallet.`,
+            URL: '/dashboard',
+        })
 
         const notifications = await Notification.findAll({
             where: { user: req.user },

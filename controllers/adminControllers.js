@@ -15,6 +15,7 @@ const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
 var cron = require('node-cron');
 const moment = require('moment')
+require('dotenv').config()
 
 
 
@@ -68,7 +69,28 @@ exports.UpdateDeposits = async (req, res) => {
                     URL: '/dashboard',
                 })
 
-                const content = `<div font-size: 1rem;>Hello ${depositUser.username}, your deposit of $${deposit.amount} has been successfully confirmed.</div> `
+                const content = `
+        <div style="padding-right: 1rem; padding-left: 1rem; margin-top: 2.5rem">
+         <img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725460513/myfolder/aoasjh8mldxsezfs9cbe.png' style="width: 4rem; height: auto" />
+         <div style="padding-top: 1.2rem; padding-bottom: 1.2rem; border-top: 1px solid lightgrey; margin-top: 1rem">
+             <div style="font-size: 1.1rem; font-weight: bold">Deposit confirmation</div>
+             <div style="margin-top: 1rem">Hello ${depositUser.username}, your deposit amount of $${deposit.amount} has been successfully confirmed. See your current balance <a href='https://aialgo.vercel.app/dashboard'  style="text-decoration: underline; color: #E96E28">here</a></div>
+         </div>
+         <div style="margin-top: 3rem; padding-top: 1rem; padding-bottom: 1rem; border-top: 1px solid #E96E28;">
+             <div style="font-weight: bold; color: #E96E28; text-align: center">Stay connected!</div>
+             <div style="display: flex; gap: 16px; align-items: center; justify-content: center; margin-top: 1rem">
+                 <a href='https://www.facebook.com/profile.php?id=61560199442347&mibextid=LQQJ4d'><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461777/myfolder/jhjssvvwqe85g7m6ygoj.png' style="width: 1.1rem; height: 1.1rem" /></a>
+                 <a href=''><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461786/myfolder/kbkwpgdzajsmlidyserp.png' style="width: 1rem; height: 1rem" /></a>
+                 <a href=''><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461793/myfolder/sea7fie6r1mndax4ent8.png' style="width: 1rem; height: 1rem" /></a>
+             </div>
+             <div style="margin-top: 1rem; font-size: 0.85rem">If you have any questions or suggestions, please feel free to contact us via our 24/7 online help or email: ${process.env.MAIL_USER}</div>
+             <div style="margin-top: 1rem;  width: fit-content; height: fit-content; background-color: #172029; color: #94A3B8; font-size: 0.75rem; padding-right: 3rem; padding-left: 3rem; padding-top: 0.75rem; padding-bottom: 0.75rem; display: flex; gap: 4px; align-items: center">
+                  <div> <img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725463522/qjtwmzzj6orqraedef04.png'  style="width: 0.75rem; height: 0.75rem" /></div>
+                  <div>AI Algo 2024, All rights reserved</div>.
+             </div>
+         </div>
+        </div>
+        `
 
                 await sendMail({ subject: 'Deposit Confirmation', to: depositUser.email, html: content, text: content })
 
@@ -86,8 +108,8 @@ exports.UpdateDeposits = async (req, res) => {
                             if (adminStore) {
                                 const referralBonus = deposit.amount * adminStore.referral_bonus_percentage / 100
 
-                                myReferralWallet.referral += referralBonus
-                                myReferralWallet.balance += referralBonus
+                                myReferralWallet.referral += parseFloat(referralBonus.toFixed(1))
+                                myReferralWallet.balance += parseFloat(referralBonus.toFixed(1))
                                 await myReferralWallet.save()
 
                                 await Notification.create({
@@ -112,13 +134,13 @@ exports.UpdateDeposits = async (req, res) => {
                     title: `deposit failed`,
                     content: `Your deposit amount of $${deposit.amount} confirmation failed. This deposit was not confirmed.`,
                     status: 'failed',
-                    URL: '/dashboard/deposit',
+                    URL: '/dashboard/deposit?screen=2',
                 })
+
+                const content = `<div font-size: 1rem;>Hello ${depositUser.username}, confirmation failed. This deposit was not confirmed.</div> `
+
+                await sendMail({ subject: 'Deposit Failed', to: depositUser.email, html: content, text: content })
             }
-
-            const content = `<div font-size: 1rem;>Hello ${depositUser.username}, confirmation failed. This deposit was not confirmed.</div> `
-
-            await sendMail({ subject: 'Deposit Failed', to: depositUser.email, html: content, text: content })
         }
 
         deposit.status = status
@@ -228,6 +250,88 @@ exports.AllUsers = async (req, res) => {
         }
 
         return res.json({ status: 200, msg: allusers })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.AdminCreateAccount = async (req, res) => {
+    try {
+        const { full_name, username, email, country, country_flag, password, role } = req.body
+        if (!full_name) return res.json({ status: 404, msg: `Full name is required` })
+        if (!username) return res.json({ status: 404, msg: `Username is required` })
+        if (!email) return res.json({ status: 404, msg: `Email address is required` })
+        if (!country) return res.json({ status: 404, msg: `Country is required` })
+        if (!country_flag) return res.json({ status: 404, msg: `Country flag is required` })
+        if (!password) return res.json({ status: 404, msg: `Password is required` })
+        if (password.length < 6) return res.json({ status: 404, msg: `Password must be at least 6 characters` })
+        if (!role) return res.json({ status: 404, msg: `Role is required` })
+
+        const findUsername = await User.findOne({ where: { username: username } })
+        if (findUsername) return res.json({ status: 400, msg: `Username already exists` })
+        const findEmail = await User.findOne({ where: { email: email } })
+        if (findEmail) return res.json({ status: 400, msg: `Email already exists` })
+
+        const myReferralId = 'AI_' + otpGenerator.generate(8, { specialChars: false })
+
+        if (role === 'user') {
+            const user = await User.create({
+                full_name,
+                username,
+                email,
+                country,
+                country_flag,
+                password,
+                email_verified: 'true',
+                referral_id: myReferralId,
+            })
+
+            await Wallet.create({
+                user: user.id
+            })
+
+            await Notification.create({
+                user: user.id,
+                title: `welcome ${username}`,
+                content: 'Welcome to the AI Artification Intelligence Trading System where we focus on making crypto trading easy. Get started by making your first deposit.',
+                URL: '/dashboard/deposit',
+            })
+
+        } else {
+            await User.create({
+                full_name,
+                username,
+                email,
+                country,
+                country_flag,
+                password,
+                email_verified: 'true',
+                referral_id: myReferralId,
+                role: role
+            })
+        }
+
+        const admin = await User.findOne({ where: { role: 'admin' } })
+        if (admin) {
+            await Notification.create({
+                user: admin.id,
+                title: `${username} joins AI Algo`,
+                content: `Hello Admin, you have successfully created ${full_name} as a ${role} on the system.`,
+                role: 'admin',
+                URL: '/admin-controls/users',
+            })
+        }
+
+        const notifications = await Notification.findAll({
+            where: { role: 'admin' },
+            order: [['createdAt', 'DESC']],
+        })
+
+        const unreadNotifications = await Notification.findAll({
+            where: { role: 'admin', read: 'false' },
+        })
+
+        return res.json({ status: 200, msg: `Account created successfully`, notis: notifications, unread: unreadNotifications })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -358,7 +462,7 @@ exports.UpdateWithdrawals = async (req, res) => {
                     user: user_id,
                     title: `withdrawal confirmed`,
                     content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been successfully processed.`,
-                    URL: '/dashboard/withdraw',
+                    URL: '/dashboard/withdraw?screen=2',
                 })
 
                 const content = `<div font-size: 1rem;>Hello ${withdrawaluser.username}, your withdrawal of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address} has been confirmed.</div> `
@@ -386,6 +490,155 @@ exports.UpdateWithdrawals = async (req, res) => {
 
     } catch (error) {
         return res.json({ status: 200, msg: error.message })
+    }
+}
+
+exports.AllTaxes = async (req, res) => {
+    try {
+        const taxes = await Tax.findAll({
+            include: [
+                {
+                    model: User,
+                    as: 'taxPayer',
+                    attributes: {
+                        exclude: ['password', 'createdAt', 'updatedAt', 'role']
+                    }
+                },
+            ],
+
+            order: [['createdAt', 'DESC']]
+        })
+        return res.json({ status: 200, msg: taxes })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.UpdateTaxes = async (req, res) => {
+    try {
+        const { user_id, status, message, tax_id } = req.body
+        if (!user_id, !tax_id) return res.json({ status: 404, msg: `Invalid request` })
+
+        const tax = await Tax.findOne({ where: { id: tax_id } })
+        if (!tax) return res.json({ status: 400, msg: 'tax not found' })
+
+        const taxPayer = await User.findOne({ where: { id: user_id } })
+        if (!taxPayer) return res.json({ status: 400, msg: 'Tax Payer not found' })
+
+        if (tax.status !== 'received') {
+
+            if (status === 'received') {
+
+                await Notification.create({
+                    user: user_id,
+                    title: `tax received`,
+                    content: `Your tax payment amount of $${tax.amount} has been received and the tax cleared.`,
+                    URL: '/dashboard/tax-payment?screen=2',
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
+
+                await sendMail({ subject: 'Tax Received', to: taxPayer.email, html: content, text: content })
+            }
+        }
+
+        if (tax.status !== 'failed') {
+
+            if (status === 'failed') {
+
+                await Notification.create({
+                    user: user_id,
+                    title: `tax receival failed`,
+                    content: `Your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.`,
+                    status: 'failed',
+                    URL: '/dashboard/tax-payment?screen=2',
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.</div> `
+
+                await sendMail({ subject: 'Tax Recieval Failed', to: taxPayer.email, html: content, text: content })
+            }
+        }
+
+        if (message) {
+
+            await Notification.create({
+                user: user_id,
+                title: `Support Team`,
+                content: message,
+                URL: '/dashboard/tax-payment',
+            })
+
+            await sendMail({ subject: 'Support Team', to: taxPayer.email, html: message, text: message })
+        }
+
+        tax.status = status
+        await tax.save()
+
+        return res.json({ status: 200, msg: 'Tax updated successfully' })
+
+    } catch (error) {
+        return res.json({ status: 200, msg: error.message })
+    }
+}
+
+exports.UpdateKYC = async (req, res) => {
+
+    try {
+        const { user_id, kyc_id, status, message } = req.body
+        if (!user_id, !kyc_id) return res.json({ status: 404, msg: `Invalid request` })
+
+        const kyc = await Kyc.findOne({ where: { id: kyc_id } })
+        if (!kyc) return res.json({ status: 400, msg: 'KYC not found' })
+
+        const kycUser = await User.findOne({ where: { id: user_id } })
+        if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
+
+        if (kyc.status !== 'verified') {
+
+            if (status === 'verified') {
+
+                kycUser.kyc_verified = 'true'
+                await kycUser.save()
+
+                await Notification.create({
+                    user: user_id,
+                    title: `KYC verified`,
+                    content: `Your KYC details submitted has been successfully verified.`,
+                    URL: '/dashboard/verify-account/kyc',
+                })
+
+                const content = `<div font-size: 1rem;>Hello ${kycUser.username}, Your KYC details submitted has been successfully verified.</div> `
+
+                await sendMail({ subject: 'KYC Verification', to: kycUser.email, html: content, text: content })
+            }
+        }
+
+        if (kyc.status !== 'failed') {
+
+            if (status === 'failed') {
+
+                if (!message) return res.json({ status: 400, msg: 'Provide a reason for failed verification' })
+
+                await Notification.create({
+                    user: user_id,
+                    title: `KYC verification failed`,
+                    content: message,
+                    status: 'failed',
+                    URL: '/dashboard/verify-account/kyc',
+                })
+
+                await sendMail({ subject: 'KYC Verification Failed', to: kycUser.email, html: message, text: message })
+            }
+        }
+
+        kyc.status = status
+
+        await kyc.save()
+
+        return res.json({ status: 200, msg: 'KYC updated successfully' })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
     }
 }
 
@@ -590,6 +843,9 @@ exports.UpdateTradingPlan = async (req, res) => {
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
 
+        const investments = await Investment.findAll({ where: { status: 'running', trading_plan_id: plan_id } })
+        if (investments.length > 0) return res.json({ status: 404, msg: 'Ongoing investment(s) on this plan' })
+
         if (title) {
             tradingPlan.title = title
         }
@@ -677,237 +933,6 @@ exports.UpdateAdminStore = async (req, res) => {
     }
 }
 
-exports.AllTaxes = async (req, res) => {
-    try {
-        const taxes = await Tax.findAll({
-            include: [
-                {
-                    model: User,
-                    as: 'taxPayer',
-                    attributes: {
-                        exclude: ['password', 'createdAt', 'updatedAt', 'role']
-                    }
-                },
-            ],
-
-            order: [['createdAt', 'DESC']]
-        })
-        return res.json({ status: 200, msg: taxes })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
-    }
-}
-
-exports.UpdateTaxes = async (req, res) => {
-    try {
-        const { user_id, status, message, tax_id } = req.body
-        if (!user_id, !tax_id) return res.json({ status: 404, msg: `Invalid request` })
-
-        const tax = await Tax.findOne({ where: { id: tax_id } })
-        if (!tax) return res.json({ status: 400, msg: 'tax not found' })
-
-        const taxPayer = await User.findOne({ where: { id: user_id } })
-        if (!taxPayer) return res.json({ status: 400, msg: 'Tax Payer not found' })
-
-        if (tax.status !== 'received') {
-
-            if (status === 'received') {
-
-                await Notification.create({
-                    user: user_id,
-                    title: `tax received`,
-                    content: `Your tax payment amount of $${tax.amount} has been received and the tax cleared.`,
-                    URL: '/dashboard/tax-payment',
-                })
-
-                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
-
-                await sendMail({ subject: 'Tax Received', to: taxPayer.email, html: content, text: content })
-            }
-        }
-
-        if (tax.status !== 'failed') {
-
-            if (status === 'failed') {
-
-                await Notification.create({
-                    user: user_id,
-                    title: `tax receival failed`,
-                    content: `Your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.`,
-                    status: 'failed',
-                    URL: '/dashboard/tax-payment',
-                })
-
-                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.</div> `
-
-                await sendMail({ subject: 'Tax Recieval Failed', to: taxPayer.email, html: content, text: content })
-            }
-        }
-
-        if (message) {
-
-            await Notification.create({
-                user: user_id,
-                title: `Support Team`,
-                content: message,
-                URL: '/dashboard/tax-payment',
-            })
-
-            await sendMail({ subject: 'Support Team', to: taxPayer.email, html: message, text: message })
-        }
-
-        tax.status = status
-        await tax.save()
-
-        return res.json({ status: 200, msg: 'Tax updated successfully' })
-
-    } catch (error) {
-        return res.json({ status: 200, msg: error.message })
-    }
-}
-
-exports.AdminCreateAccount = async (req, res) => {
-    try {
-        const { full_name, username, email, country, country_flag, password, role } = req.body
-        if (!full_name) return res.json({ status: 404, msg: `Full name is required` })
-        if (!username) return res.json({ status: 404, msg: `Username is required` })
-        if (!email) return res.json({ status: 404, msg: `Email address is required` })
-        if (!country) return res.json({ status: 404, msg: `Country is required` })
-        if (!country_flag) return res.json({ status: 404, msg: `Country flag is required` })
-        if (!password) return res.json({ status: 404, msg: `Password is required` })
-        if (password.length < 6) return res.json({ status: 404, msg: `Password must be at least 6 characters` })
-        if (!role) return res.json({ status: 404, msg: `Role is required` })
-
-        const findUsername = await User.findOne({ where: { username: username } })
-        if (findUsername) return res.json({ status: 400, msg: `Username already exists` })
-        const findEmail = await User.findOne({ where: { email: email } })
-        if (findEmail) return res.json({ status: 400, msg: `Email already exists` })
-
-        const myReferralId = 'AI_' + otpGenerator.generate(8, { specialChars: false })
-
-        if (role === 'user') {
-            const user = await User.create({
-                full_name,
-                username,
-                email,
-                country,
-                country_flag,
-                password,
-                email_verified: 'true',
-                referral_id: myReferralId,
-            })
-
-            await Wallet.create({
-                user: user.id
-            })
-
-            await Notification.create({
-                user: user.id,
-                title: `welcome ${username}`,
-                content: 'Welcome to the AI Artification Intelligence Trading System where we focus on making crypto trading easy. Get started by making your first deposit.',
-                URL: '/dashboard/deposit',
-            })
-
-        } else {
-            await User.create({
-                full_name,
-                username,
-                email,
-                country,
-                country_flag,
-                password,
-                email_verified: 'true',
-                referral_id: myReferralId,
-                role: role
-            })
-        }
-
-        const admin = await User.findOne({ where: { role: 'admin' } })
-        if (admin) {
-            await Notification.create({
-                user: admin.id,
-                title: `${username} joins AI Algo`,
-                content: `Hello Admin, you have successfully created ${full_name} as a ${role} on the system.`,
-                role: 'admin',
-                URL: '/admin-controls/users',
-            })
-        }
-
-        const notifications = await Notification.findAll({
-            where: { role: 'admin' },
-            order: [['createdAt', 'DESC']],
-        })
-
-        const unreadNotifications = await Notification.findAll({
-            where: { role: 'admin', read: 'false' },
-        })
-
-        return res.json({ status: 200, msg: `Account created successfully`, notis: notifications, unread: unreadNotifications })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
-    }
-}
-
-exports.UpdateKYC = async (req, res) => {
-
-    try {
-        const { user_id, kyc_id, status, message } = req.body
-        if (!user_id, !kyc_id) return res.json({ status: 404, msg: `Invalid request` })
-
-        const kyc = await Kyc.findOne({ where: { id: kyc_id } })
-        if (!kyc) return res.json({ status: 400, msg: 'KYC not found' })
-
-        const kycUser = await User.findOne({ where: { id: user_id } })
-        if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
-
-        if (kyc.status !== 'verified') {
-
-            if (status === 'verified') {
-
-                kycUser.kyc_verified = 'true'
-                await kycUser.save()
-
-                await Notification.create({
-                    user: user_id,
-                    title: `KYC verified`,
-                    content: `Your KYC details submitted has been successfully verified.`,
-                    URL: '/dashboard/verify-account/kyc',
-                })
-
-                const content = `<div font-size: 1rem;>Hello ${kycUser.username}, Your KYC details submitted has been successfully verified.</div> `
-
-                await sendMail({ subject: 'KYC Verification', to: kycUser.email, html: content, text: content })
-            }
-        }
-
-        if (kyc.status !== 'failed') {
-
-            if (status === 'failed') {
-
-                if (!message) return res.json({ status: 400, msg: 'Provide a reason for failed verification' })
-
-                await Notification.create({
-                    user: user_id,
-                    title: `KYC verification failed`,
-                    content: message,
-                    status: 'failed',
-                    URL: '/dashboard/verify-account/kyc',
-                })
-
-                await sendMail({ subject: 'KYC Verification Failed', to: kycUser.email, html: message, text: message })
-            }
-        }
-
-        kyc.status = status
-
-        await kyc.save()
-
-        return res.json({ status: 200, msg: 'KYC updated successfully' })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
-    }
-}
-
 
 cron.schedule('* * * * *', async () => {
 
@@ -927,7 +952,7 @@ cron.schedule('* * * * *', async () => {
 
             if (moment().isSameOrAfter(new Date(ele.topupDuration))) {
 
-                if (ele.profit < TotalProfit) {
+                if (ele.rounds < tradingPlan.duration) {
 
                     ele.profit += parseFloat(topupProfit.toFixed(1))
                     ele.bonus += parseFloat(topupBonus.toFixed(1))
@@ -935,7 +960,9 @@ cron.schedule('* * * * *', async () => {
                     const newTopupDuration = moment().add(parseFloat(0.5), `${tradingPlan.duration_type}`)
                     ele.topupDuration = `${newTopupDuration}`
 
-                    if (ele.profit >= TotalProfit) {
+                    ele.rounds += 1
+
+                    if (ele.rounds >= tradingPlan.duration) {
                         ele.status = 'completed'
 
                         await Notification.create({

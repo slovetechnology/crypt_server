@@ -8,6 +8,7 @@ module.exports = (sequelize, DataTypes) => {
         bonus: {type: DataTypes.FLOAT, defaultValue: 0},
         status: {type: DataTypes.STRING, defaultValue: 'running'},
         claim: {type: DataTypes.STRING, defaultValue: 'false'},
+        rounds: {type: DataTypes.INTEGER, defaultValue: 0},
         endDate: {type: DataTypes.STRING},
         topupDuration: {type: DataTypes.STRING},
     })

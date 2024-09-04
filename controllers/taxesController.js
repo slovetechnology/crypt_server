@@ -34,7 +34,7 @@ exports.PayTax = async (req, res) => {
             user: req.user,
             title: `tax payment success`,
             content: `Your tax payment amount of $${amount} was successful, pending confirmation.`,
-            URL: '/dashboard/tax-payment',
+            URL: '/dashboard/tax-payment?screen=2',
         })
 
         const admins = await User.findAll({ where: { role: 'admin' } })

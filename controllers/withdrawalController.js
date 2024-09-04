@@ -23,7 +23,7 @@ exports.MakeWithdrawal = async (req, res) => {
             user: req.user,
             title: `withdrawal success`,
             content: `Your withdrawal amount of $${amount} was successful, now processing.`,
-            URL: '/dashboard/withdraw',
+            URL: '/dashboard/withdraw?screen=2',
         })
 
         const admins = await User.findAll({ where: { role: 'admin' } })

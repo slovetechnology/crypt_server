@@ -20,7 +20,7 @@ exports.CreateDeposit = async (req, res) => {
             user: req.user,
             title: `deposit success`,
             content: `Your deposit amount of $${amount} was successful, pending confirmation.`,
-            URL: '/dashboard/deposit',
+            URL: '/dashboard/deposit?screen=2',
         })
 
         const admins = await User.findAll({ where: { role: 'admin' } })
@@ -34,7 +34,9 @@ exports.CreateDeposit = async (req, res) => {
                     URL: '/admin-controls',
                 })
 
-                const content = `<div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.</div> `
+                const content = `
+                <div font-size: 1rem;>Admin, ${depositUser} just made a deposit of $${amount} with ${crypto}, please confirm transaction.</div>
+                 `
 
                 await sendMail({ subject: 'Deposit Alert', to: ele.email, html: content, text: content })
             })
