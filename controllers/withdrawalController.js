@@ -1,5 +1,4 @@
 const sendMail = require('../config/emailConfig')
-
 const Withdrawal = require('../models').withdrawals
 const Notification = require('../models').notifications
 const Wallet = require('../models').wallets

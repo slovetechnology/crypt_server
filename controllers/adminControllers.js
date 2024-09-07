@@ -4,6 +4,7 @@ const Deposit = require('../models').deposits
 const Notification = require('../models').notifications
 const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
+const Crypto = require('../models').crypto
 const AdminWallet = require('../models').admin_wallets
 const TradingPlans = require('../models').trading_plans
 const AdminStore = require('../models').admin_store
@@ -642,37 +643,170 @@ exports.UpdateKYC = async (req, res) => {
     }
 }
 
-exports.CreateAdminWallets = async (req, res) => {
+exports.CreateCryptocurrency = async (req, res) => {
     try {
 
-        const { crypto, network, address, } = req.body
-        if (!crypto || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
-        const matchingCrypto = await AdminWallet.findOne({ where: { crypto: crypto } })
-        if (matchingCrypto) return res.json({ status: 404, msg: 'Exact crypto name already exists' })
-        const matchingNetwork = await AdminWallet.findOne({ where: { network: network } })
-        if (matchingNetwork) return res.json({ status: 404, msg: 'Exact network name already exists' })
-        if (!req.files) return res.json({ status: 404, msg: `Crypto image and Qr scan code image are required` })
+        const { crypto_name } = req.body
+        if (!crypto_name) return res.json({ status: 404, msg: `Incomplete request found` })
+        const matchingCrypto = await Crypto.findOne({ where: { crypto_name: crypto_name } })
+        if (matchingCrypto) return res.json({ status: 404, msg: 'Exact crypto already exists' })
+
+        if (!req.files) return res.json({ status: 404, msg: `Crypto image is required` })
 
         const crypto_img = req.files.crypto_img
-        const qrcode_img = req.files.qrcode_img
 
         const filePath = './public/cryptocurrency'
         if (!fs.existsSync(filePath)) {
             fs.mkdirSync(filePath)
         }
 
-        const cryptoImgName = `${slug(crypto, '-')}.jpg`
-        const qrCodeImgName = `${slug(network, '-')}.jpg`
+        const cryptoImgName = `${slug(crypto_name, '-')}.jpg`
 
-        await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
         await crypto_img.mv(`${filePath}/${cryptoImgName}`)
 
 
+        await Crypto.create({
+            crypto_name,
+            crypto_img: cryptoImgName,
+        })
+
+        return res.json({ status: 200, msg: 'Cryptocurrency created successfully' })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.GetCryptocurrency = async (req, res) => {
+    try {
+        const cryptocurrency = await Crypto.findAll({
+        })
+
+        return res.json({ status: 200, msg: cryptocurrency })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.UpdateCryptocurrency = async (req, res) => {
+    try {
+        const { crypto_name, crypto_id } = req.body
+        if (!crypto_id) return res.json({ status: 404, msg: `Provide Crypto id` })
+
+        const cryptocurrency = await Crypto.findOne({ where: { id: crypto_id } })
+        if (!cryptocurrency) return res.json({ status: 404, msg: 'Crypto not found' })
+
+        const crypto_img = req?.files?.crypto_img
+
+        let cryptoImgName;
+
+        const filePath = './public/cryptocurrency'
+        const currentCryptoImgPath = `${filePath}/${cryptocurrency.crypto_img}`
+
+        if (crypto_img) {
+
+            if (fs.existsSync(currentCryptoImgPath)) {
+                fs.unlinkSync(currentCryptoImgPath)
+            }
+
+            if (!fs.existsSync(filePath)) {
+                fs.mkdirSync(filePath)
+            }
+
+            if (crypto_name) {
+                cryptoImgName = `${slug(crypto_name, '-')}.jpg`
+            } else {
+                cryptoImgName = `${slug(cryptocurrency.crypto_name, '-')}.jpg`
+            }
+
+            await crypto_img.mv(`${filePath}/${cryptoImgName}`)
+        }
+
+        if (crypto_img) {
+            cryptocurrency.crypto_img = cryptoImgName
+        }
+        if (crypto_name) {
+            cryptocurrency.crypto_name = crypto_name
+
+            const cryptoWallets = await AdminWallet.findAll({ where: { crypto: crypto_id } })
+            if (cryptoWallets) {
+                cryptoWallets.map(async ele => {
+                    ele.crypto_name = crypto_name
+                    await ele.save()
+                })
+            }
+        }
+
+        await cryptocurrency.save()
+
+        return res.json({ status: 200, msg: 'Cryptocurrency updated successfully' })
+    } catch (error) {
+        res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.DeleteCryptocurrency = async (req, res) => {
+    try {
+        const { crypto_id } = req.body
+        if (!crypto_id) return res.json({ status: 404, msg: `Provide Crypto id` })
+
+        const cryptocurrency = await Crypto.findOne({ where: { id: crypto_id } })
+        if (!cryptocurrency) return res.json({ status: 404, msg: 'Crypto not found' })
+
+
+        const CryptoImgPath = `./public/cryptocurrency/${cryptocurrency.crypto_img}`
+        if (fs.existsSync(CryptoImgPath)) {
+            fs.unlinkSync(CryptoImgPath)
+        }
+
+        await cryptocurrency.destroy()
+
+        const cryptoWallets = await AdminWallet.findAll({ where: { crypto: crypto_id } })
+        if (cryptoWallets) {
+            cryptoWallets.map(async ele => {
+
+                const QrImgPath = `./public/adminWallets/${ele.qrcode_img}`
+                if (fs.existsSync(QrImgPath)) {
+                    fs.unlinkSync(QrImgPath)
+                }
+
+                await ele.destroy()
+            })
+        }
+
+        return res.json({ status: 200, msg: 'Crypto deleted successfully' })
+    } catch (error) {
+        return res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.CreateAdminWallets = async (req, res) => {
+    try {
+
+        const { crypto_id, crypto_name, network, address, } = req.body
+        if (!crypto_id || !crypto_name || !network || !address) return res.json({ status: 404, msg: `Incomplete request found` })
+
+        const matchingNetwork = await AdminWallet.findOne({ where: { network: network } })
+        if (matchingNetwork) return res.json({ status: 404, msg: 'Exact network already exists' })
+
+        if (!req.files) return res.json({ status: 404, msg: `Qr scan code image is required` })
+
+        const qrcode_img = req.files.qrcode_img
+
+        const filePath = './public/adminWallets'
+        if (!fs.existsSync(filePath)) {
+            fs.mkdirSync(filePath)
+        }
+
+        const qrCodeImgName = `${slug(network, '-')}.jpg`
+
+        await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
+
+
         await AdminWallet.create({
-            crypto,
+            crypto: crypto_id,
+            crypto_name,
             network,
             address,
-            crypto_img: cryptoImgName,
             qrcode_img: qrCodeImgName,
         })
 
@@ -695,40 +829,18 @@ exports.GetAdminWallets = async (req, res) => {
 
 exports.UpdateAdminWallet = async (req, res) => {
     try {
-        const { crypto, network, address, wallet_id } = req.body
+        const { crypto_name, network, address, wallet_id } = req.body
         if (!wallet_id) return res.json({ status: 404, msg: `Provide Wallet id` })
 
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
-        const crypto_img = req?.files?.crypto_img
         const qrcode_img = req?.files?.qrcode_img
 
-        let cryptoImgName;
         let qrCodeImgName;
 
-        const filePath = './public/cryptocurrency'
-        const currentCryptoImgPath = `${filePath}/${adminWallet.crypto_img}`
+        const filePath = './public/adminWallets'
         const currentQrCodeImgPath = `${filePath}/${adminWallet.qrcode_img}`
-
-        if (crypto_img) {
-
-            if (fs.existsSync(currentCryptoImgPath)) {
-                fs.unlinkSync(currentCryptoImgPath)
-            }
-
-            if (!fs.existsSync(filePath)) {
-                fs.mkdirSync(filePath)
-            }
-
-            if (crypto) {
-                cryptoImgName = `${slug(crypto, '-')}.jpg`
-            } else {
-                cryptoImgName = `${slug(adminWallet.crypto, '-')}.jpg`
-            }
-
-            await crypto_img.mv(`${filePath}/${cryptoImgName}`)
-        }
 
         if (qrcode_img) {
 
@@ -749,14 +861,11 @@ exports.UpdateAdminWallet = async (req, res) => {
             await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
         }
 
-        if (crypto_img) {
-            adminWallet.crypto_img = cryptoImgName
-        }
         if (qrcode_img) {
             adminWallet.qrcode_img = qrCodeImgName
         }
-        if (crypto) {
-            adminWallet.crypto = crypto
+        if (crypto_name) {
+            adminWallet.crypto_name = crypto_name
         }
         if (network) {
             adminWallet.network = network
@@ -781,13 +890,7 @@ exports.DeleteWallet = async (req, res) => {
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
-
-        const CryptoImgPath = `./public/cryptocurrency/${adminWallet.crypto_img}`
-        if (fs.existsSync(CryptoImgPath)) {
-            fs.unlinkSync(CryptoImgPath)
-        }
-
-        const QrImgPath = `./public/cryptocurrency/${adminWallet.qrcode_img}`
+        const QrImgPath = `./public/adminWallets/${adminWallet.qrcode_img}`
         if (fs.existsSync(QrImgPath)) {
             fs.unlinkSync(QrImgPath)
         }

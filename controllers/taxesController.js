@@ -20,13 +20,14 @@ exports.UserTaxes = async (req, res) => {
 exports.PayTax = async (req, res) => {
     try {
 
-        const { amount, crypto, deposit_address, taxPayer } = req.body
-        if (!amount || !crypto || !deposit_address || !taxPayer) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, crypto, network, deposit_address, taxPayer } = req.body
+        if (!amount || !crypto || !network || !deposit_address || !taxPayer) return res.json({ status: 404, msg: `Incomplete request found` })
 
         await Tax.create({
             user: req.user,
             amount,
             crypto,
+            network,
             deposit_address
         })
 

@@ -10,9 +10,12 @@ const Up = require('../models').ups
 const Tax = require('../models').taxes
 const Kyc = require('../models').kyc
 const AdminStore = require('../models').admin_store
+const Crypto = require('../models').crypto
+const AdminWallet = require('../models').admin_wallets
 const jwt = require('jsonwebtoken')
 const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
+const { eLogo, eFooter } = require('../config/utils')
 require('dotenv').config()
 
 
@@ -187,43 +190,29 @@ exports.LoginAccount = async (req, res) => {
 exports.FindAccountByEmail = async (req, res) => {
     try {
         const { email } = req.body
+        if (!email) return res.json({ status: 404, msg: `Provide an email address` })
+
         const user = await User.findOne({ where: { email: email } })
         if (!user) return res.json({ status: 404, msg: `No account belongs to this email` })
-
-        const adminStore = await AdminStore.findOne({
-        })
-        if (!adminStore) return res.json({ status: 400, msg: 'Admin Store not found' })
 
         const otp = otpGenerator.generate(6, { specialChars: false })
 
         const content = `
         <div style="padding-right: 1rem; padding-left: 1rem; margin-top: 2.5rem">
-         <img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725460513/myfolder/aoasjh8mldxsezfs9cbe.png' style="width: 4rem; height: auto" />
-         <div style="padding-top: 1.2rem; padding-bottom: 1.2rem; border-top: 1px solid lightgrey; margin-top: 1rem">
-            <div style="font-size: 1.1rem; font-weight: bold">Your email verification code</div>
-            <div style="font-size: 2rem; margin-top: 1rem">${otp}</div>
-            <div style="margin-top: 1.5rem">This code can only be used once. If you didn't request a code, please ignore this email. Never share this code with anyone else.</div>
-         </div>
-         <div style="margin-top: 3rem; padding-top: 1rem; padding-bottom: 1rem; border-top: 1px solid #E96E28;">
-             <div style="font-weight: bold; color: #E96E28; text-align: center">Stay connected!</div>
-             <div style="display: flex; gap: 16px; align-items: center; justify-content: center; margin-top: 1rem">
-                 <a href=${adminStore.facebook}><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461777/myfolder/jhjssvvwqe85g7m6ygoj.png' style="width: 1.1rem; height: 1.1rem" /></a>
-                 <a href=${adminStore.instagram}><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461786/myfolder/kbkwpgdzajsmlidyserp.png' style="width: 1rem; height: 1rem" /></a>
-                 <a href=${adminStore.telegram}><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461793/myfolder/sea7fie6r1mndax4ent8.png' style="width: 1rem; height: 1rem" /></a>
-             </div>
-             <div style="margin-top: 1rem; font-size: 0.85rem">If you have any questions or suggestions, please feel free to contact us via our 24/7 online help or email: ${process.env.MAIL_USER}</div>
-             <div style="margin-top: 1rem;  width: fit-content; height: fit-content; background-color: #172029; color: #94A3B8; font-size: 0.75rem; padding-right: 3rem; padding-left: 3rem; padding-top: 0.75rem; padding-bottom: 0.75rem; display: flex; gap: 4px; align-items: center">
-                  <div> <img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725463522/qjtwmzzj6orqraedef04.png'  style="width: 0.75rem; height: 0.75rem" /></div>
-                  <div>AI Algo 2024, All rights reserved</div>.
-             </div>
-         </div>
+          <div>${eLogo}</div>
+          <div style="padding-top: 1.2rem; padding-bottom: 1.2rem; border-top: 1px solid lightgrey; margin-top: 1rem">
+             <div style="font-size: 1.1rem; font-weight: bold">Your email verification code</div>
+             <div style="font-size: 2rem; margin-top: 1rem">${otp}</div>
+             <div style="margin-top: 1.5rem">This code can only be used once. If you didn't request a code, please ignore this email. Never share this code with anyone else.</div>
+          </div>
+          <div>${eFooter}</div>
         </div>
         `
         user.resetcode = otp
         await user.save()
         await sendMail({ subject: 'Email Verification Code', to: user.email, html: content, text: content })
 
-        return res.json({ status: 200 })
+        return res.json({ status: 200, msg: eFooter })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -529,6 +518,23 @@ exports.UserUp = async (req, res) => {
         }
 
         return res.json({ status: 200, msg: userUps })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.Get_Admin_Cryptocurrency_And_Their_Wallets = async (req, res) => {
+    try {
+        const crypto_and_wallets = await Crypto.findAll({
+            include: [
+                {
+                    model: AdminWallet,
+                    as: 'cryptoWallet',
+                },
+            ],
+        })
+
+        return res.json({ status: 200, msg: crypto_and_wallets })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
