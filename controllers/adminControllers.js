@@ -12,11 +12,11 @@ const Tax = require('../models').taxes
 const Kyc = require('../models').kyc
 const fs = require('fs')
 const slug = require('slug')
-const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
 var cron = require('node-cron');
 const moment = require('moment')
-require('dotenv').config()
+const Mailing = require('../config/emailDesign')
+const { webShort, webURL } = require('../utils/utils')
 
 
 
@@ -44,58 +44,42 @@ exports.AllDeposits = async (req, res) => {
 exports.UpdateDeposits = async (req, res) => {
 
     try {
-        const { user_id, status, deposit_id } = req.body
-        if (!user_id, !deposit_id) return res.json({ status: 404, msg: `Invalid request` })
+        const { status, deposit_id } = req.body
+        if (!deposit_id) return res.json({ status: 404, msg: `Provide a deposit id` })
 
         const deposit = await Deposit.findOne({ where: { id: deposit_id } })
         if (!deposit) return res.json({ status: 400, msg: 'Deposit not found' })
 
-        const depositUser = await User.findOne({ where: { id: user_id } })
+        const depositUser = await User.findOne({ where: { id: deposit.user } })
         if (!depositUser) return res.json({ status: 400, msg: 'Deposit User not found' })
 
         if (deposit.status !== 'confirmed') {
 
             if (status === 'confirmed') {
 
-                const wallet = await Wallet.findOne({ where: { user: user_id } })
+                const wallet = await Wallet.findOne({ where: { user: deposit.user } })
                 if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
                 wallet.total_deposit += deposit.amount
                 wallet.balance += deposit.amount
                 await wallet.save()
 
                 await Notification.create({
-                    user: user_id,
+                    user: deposit.user,
                     title: `deposit confirmed`,
                     content: `Your deposit amount of $${deposit.amount} confirmed. Check your wallet for your available balance.`,
                     URL: '/dashboard',
                 })
 
-                const content = `
-        <div style="padding-right: 1rem; padding-left: 1rem; margin-top: 2.5rem">
-         <img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725460513/myfolder/aoasjh8mldxsezfs9cbe.png' style="width: 4rem; height: auto" />
-         <div style="padding-top: 1.2rem; padding-bottom: 1.2rem; border-top: 1px solid lightgrey; margin-top: 1rem">
-             <div style="font-size: 1.1rem; font-weight: bold">Deposit confirmation</div>
-             <div style="margin-top: 1rem">Hello ${depositUser.username}, your deposit amount of $${deposit.amount} has been successfully confirmed. See your current balance <a href='https://aialgo.vercel.app/dashboard'  style="text-decoration: underline; color: #E96E28">here</a></div>
-         </div>
-         <div style="margin-top: 3rem; padding-top: 1rem; padding-bottom: 1rem; border-top: 1px solid #E96E28;">
-             <div style="font-weight: bold; color: #E96E28; text-align: center">Stay connected!</div>
-             <div style="display: flex; gap: 16px; align-items: center; justify-content: center; margin-top: 1rem">
-                 <a href='https://www.facebook.com/profile.php?id=61560199442347&mibextid=LQQJ4d'><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461777/myfolder/jhjssvvwqe85g7m6ygoj.png' style="width: 1.1rem; height: 1.1rem" /></a>
-                 <a href=''><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461786/myfolder/kbkwpgdzajsmlidyserp.png' style="width: 1rem; height: 1rem" /></a>
-                 <a href=''><img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725461793/myfolder/sea7fie6r1mndax4ent8.png' style="width: 1rem; height: 1rem" /></a>
-             </div>
-             <div style="margin-top: 1rem; font-size: 0.85rem">If you have any questions or suggestions, please feel free to contact us via our 24/7 online help or email: ${process.env.MAIL_USER}</div>
-             <div style="margin-top: 1rem;  width: fit-content; height: fit-content; background-color: #172029; color: #94A3B8; font-size: 0.75rem; padding-right: 3rem; padding-left: 3rem; padding-top: 0.75rem; padding-bottom: 0.75rem; display: flex; gap: 4px; align-items: center">
-                  <div> <img src='https://res.cloudinary.com/dnz3cbnxr/image/upload/v1725463522/qjtwmzzj6orqraedef04.png'  style="width: 0.75rem; height: 0.75rem" /></div>
-                  <div>AI Algo 2024, All rights reserved</div>.
-             </div>
-         </div>
-        </div>
-        `
+                Mailing({
+                    subject: `Deposit Confirmation`,
+                    eTitle: `Deposit confirmed`,
+                    eBody: `
+                      <div>Hello ${depositUser.username}, your deposit amount of $${deposit.amount} made on ${moment(deposit.createdAt).format('DD-MM-yyyy')} / ${moment(deposit.createdAt).format('h:mm')} has been successfully confirmed. See your current balance <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">here</a></div>
+                    `,
+                    account: depositUser
+                })
 
-                await sendMail({ subject: 'Deposit Confirmation', to: depositUser.email, html: content, text: content })
-
-                const UserDeposits = await Deposit.findAll({ where: { user: user_id } })
+                const UserDeposits = await Deposit.findAll({ where: { user: deposit.user } })
                 if (UserDeposits.length === 1) {
                     const findMyReferral = await User.findOne({ where: { referral_id: depositUser.my_referral } })
 
@@ -116,8 +100,17 @@ exports.UpdateDeposits = async (req, res) => {
                                 await Notification.create({
                                     user: findMyReferral.id,
                                     title: `referral bonus`,
-                                    content: `Your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral; "${depositUser.username}" first deposit. Thank you for introducing more people to our system.`,
+                                    content: `Your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral ${depositUser.username} first deposit. Thank you for introducing more people to ${webShort}.`,
                                     URL: '/dashboard',
+                                })
+
+                                Mailing({
+                                    subject: `Referral Bonus`,
+                                    eTitle: `Referral bonus credited`,
+                                    eBody: `
+                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}</div>
+                                    `,
+                                    account: findMyReferral
                                 })
                             }
                         }
@@ -131,16 +124,22 @@ exports.UpdateDeposits = async (req, res) => {
             if (status === 'failed') {
 
                 await Notification.create({
-                    user: user_id,
+                    user: deposit.user,
                     title: `deposit failed`,
                     content: `Your deposit amount of $${deposit.amount} confirmation failed. This deposit was not confirmed.`,
                     status: 'failed',
                     URL: '/dashboard/deposit?screen=2',
                 })
 
-                const content = `<div font-size: 1rem;>Hello ${depositUser.username}, confirmation failed. This deposit was not confirmed.</div> `
+                Mailing({
+                    subject: `Deposit Failed`,
+                    eTitle: `Deposit failed`,
+                    eBody: `
+                      <div>Hello ${depositUser.username}, your deposit amount of $${deposit.amount} made on ${moment(deposit.createdAt).format('DD-MM-yyyy')} / ${moment(deposit.createdAt).format('h:mm')} confirmation failed, this deposit was not confirmed. Did you make this deposit? File a complaint <a href='${webURL}/dashboard/feedback' style="text-decoration: underline; color: #E96E28">here</a></div>
+                    `,
+                    account: depositUser
+                })
 
-                await sendMail({ subject: 'Deposit Failed', to: depositUser.email, html: content, text: content })
             }
         }
 
@@ -179,13 +178,13 @@ exports.AllInvestments = async (req, res) => {
 exports.UpdateInvestments = async (req, res) => {
 
     try {
-        const { user_id, status, investment_id, profit, bonus, } = req.body
-        if (!user_id, !investment_id) return res.json({ status: 404, msg: `Invalid request` })
+        const { status, investment_id, profit, bonus, } = req.body
+        if (!investment_id) return res.json({ status: 404, msg: `Provide an investment id` })
 
         const investment = await Investment.findOne({ where: { id: investment_id } })
         if (!investment) return res.json({ status: 400, msg: 'Investment not found' })
 
-        const investmentUser = await User.findOne({ where: { id: user_id } })
+        const investmentUser = await User.findOne({ where: { id: investment.user } })
         if (!investmentUser) return res.json({ status: 400, msg: 'Investment User not found' })
 
         if (investment.status !== 'completed') {
@@ -193,7 +192,7 @@ exports.UpdateInvestments = async (req, res) => {
             if (status === 'completed') {
 
                 await Notification.create({
-                    user: user_id,
+                    user: investment.user,
                     title: `profit completed`,
                     content: `Profits for your $${investment.amount} ${investment.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
                     URL: '/dashboard/investment',
@@ -446,13 +445,13 @@ exports.AllWithdrawals = async (req, res) => {
 
 exports.UpdateWithdrawals = async (req, res) => {
     try {
-        const { user_id, status, message, withdrawal_id } = req.body
-        if (!user_id, !withdrawal_id) return res.json({ status: 404, msg: `Invalid request` })
+        const { status, message, withdrawal_id } = req.body
+        if (!withdrawal_id) return res.json({ status: 404, msg: `Provide a withdrawal id` })
 
         const withdrawal = await Withdrawal.findOne({ where: { id: withdrawal_id } })
         if (!withdrawal) return res.json({ status: 400, msg: 'Withdrawal not found' })
 
-        const withdrawaluser = await User.findOne({ where: { id: user_id } })
+        const withdrawaluser = await User.findOne({ where: { id: withdrawal.user } })
         if (!withdrawaluser) return res.json({ status: 400, msg: 'Withdrawal user not found' })
 
         if (withdrawal.status !== 'confirmed') {
@@ -460,7 +459,7 @@ exports.UpdateWithdrawals = async (req, res) => {
             if (status === 'confirmed') {
 
                 await Notification.create({
-                    user: user_id,
+                    user: withdrawal.user,
                     title: `withdrawal confirmed`,
                     content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been successfully processed.`,
                     URL: '/dashboard/withdraw?screen=2',
@@ -475,7 +474,7 @@ exports.UpdateWithdrawals = async (req, res) => {
         if (message) {
 
             await Notification.create({
-                user: user_id,
+                user: withdrawal.user,
                 title: `Support Team`,
                 content: message,
                 URL: '/dashboard/tax-payment',
@@ -517,13 +516,13 @@ exports.AllTaxes = async (req, res) => {
 
 exports.UpdateTaxes = async (req, res) => {
     try {
-        const { user_id, status, message, tax_id } = req.body
-        if (!user_id, !tax_id) return res.json({ status: 404, msg: `Invalid request` })
+        const { status, message, tax_id } = req.body
+        if (!tax_id) return res.json({ status: 404, msg: `Provide a tax id` })
 
         const tax = await Tax.findOne({ where: { id: tax_id } })
         if (!tax) return res.json({ status: 400, msg: 'tax not found' })
 
-        const taxPayer = await User.findOne({ where: { id: user_id } })
+        const taxPayer = await User.findOne({ where: { id: tax.user } })
         if (!taxPayer) return res.json({ status: 400, msg: 'Tax Payer not found' })
 
         if (tax.status !== 'received') {
@@ -531,13 +530,13 @@ exports.UpdateTaxes = async (req, res) => {
             if (status === 'received') {
 
                 await Notification.create({
-                    user: user_id,
+                    user: tax.user,
                     title: `tax received`,
                     content: `Your tax payment amount of $${tax.amount} has been received and the tax cleared.`,
                     URL: '/dashboard/tax-payment?screen=2',
                 })
 
-                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} has been received and your taxes cleared.</div> `
+                const content = `<div font-size: 1rem;>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} has been received and the tax cleared.</div> `
 
                 await sendMail({ subject: 'Tax Received', to: taxPayer.email, html: content, text: content })
             }
@@ -548,7 +547,7 @@ exports.UpdateTaxes = async (req, res) => {
             if (status === 'failed') {
 
                 await Notification.create({
-                    user: user_id,
+                    user: tax.user,
                     title: `tax receival failed`,
                     content: `Your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.`,
                     status: 'failed',
@@ -564,7 +563,7 @@ exports.UpdateTaxes = async (req, res) => {
         if (message) {
 
             await Notification.create({
-                user: user_id,
+                user: tax.user,
                 title: `Support Team`,
                 content: message,
                 URL: '/dashboard/tax-payment',
@@ -586,13 +585,13 @@ exports.UpdateTaxes = async (req, res) => {
 exports.UpdateKYC = async (req, res) => {
 
     try {
-        const { user_id, kyc_id, status, message } = req.body
-        if (!user_id, !kyc_id) return res.json({ status: 404, msg: `Invalid request` })
+        const { kyc_id, status, message } = req.body
+        if (!kyc_id) return res.json({ status: 404, msg: `Invalid request` })
 
         const kyc = await Kyc.findOne({ where: { id: kyc_id } })
         if (!kyc) return res.json({ status: 400, msg: 'KYC not found' })
 
-        const kycUser = await User.findOne({ where: { id: user_id } })
+        const kycUser = await User.findOne({ where: { id: kyc.user } })
         if (!kycUser) return res.json({ status: 400, msg: 'KYC User not found' })
 
         if (kyc.status !== 'verified') {
@@ -603,7 +602,7 @@ exports.UpdateKYC = async (req, res) => {
                 await kycUser.save()
 
                 await Notification.create({
-                    user: user_id,
+                    user: kyc.user,
                     title: `KYC verified`,
                     content: `Your KYC details submitted has been successfully verified.`,
                     URL: '/dashboard/verify-account/kyc',
@@ -622,7 +621,7 @@ exports.UpdateKYC = async (req, res) => {
                 if (!message) return res.json({ status: 400, msg: 'Provide a reason for failed verification' })
 
                 await Notification.create({
-                    user: user_id,
+                    user: kyc.user,
                     title: `KYC verification failed`,
                     content: message,
                     status: 'failed',

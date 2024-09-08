@@ -1,4 +1,3 @@
-const { Op } = require('sequelize')
 const Investment = require('../models').investments
 const Notification = require('../models').notifications
 const Up = require('../models').ups
@@ -10,20 +9,29 @@ const moment = require('moment')
 
 exports.CreateInvestment = async (req, res) => {
     try {
-        const { amount, trading_plan, trading_plan_id, duration, duration_type, investmentUser } = req.body
-        if (!amount || !trading_plan || !trading_plan_id || !duration || !duration_type || !investmentUser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, trading_plan, trading_plan_id, duration, duration_type } = req.body
+        if (!amount || !trading_plan || !trading_plan_id || !duration || !duration_type) return res.json({ status: 404, msg: `Incomplete request found` })
+
+        const user = await User.findOne({ where: { id: req.user } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
 
         if (trading_plan === 'test run') {
-            const investments = await Investment.findAll({ where: { user: req.user } })
-            const TestRunTrial = investments.filter(item => item.trading_plan === 'test run')
-            if (TestRunTrial.length > 0) return res.json({ status: 404, msg: `Test Run is one trial only` })
-            if (investments.length > 0) return res.json({ status: 404, msg: `Test Run is for first investment only` })
+            const TestRunInvestment = await Investment.findAll({ where: { user: req.user, trading_plan: 'test run' } })
+            if (TestRunInvestment.length > 0) return res.json({ status: 404, msg: `Test run is one trial only` })
         }
+
+        const wallet = await Wallet.findOne({ where: { user: req.user } })
+        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+
+        if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
+
+        wallet.balance -= amount
+        await wallet.save()
 
         const topupDuration = moment().add(parseFloat(0.5), `${duration_type}`)
         const endDate = moment().add(parseFloat(duration), `${duration_type}`)
 
-        await Investment.create({
+        const investment = await Investment.create({
             user: req.user,
             amount,
             trading_plan,
@@ -32,15 +40,10 @@ exports.CreateInvestment = async (req, res) => {
             topupDuration: `${topupDuration}`
         })
 
-        const wallet = await Wallet.findOne({ where: { user: req.user } })
-        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
-        wallet.balance -= amount
-        await wallet.save()
-
         await Notification.create({
             user: req.user,
             title: `investment success`,
-            content: `You've successfully bought ${trading_plan} plan for $${amount} from wallet balance, check your investment portfolio as trading begins now.`,
+            content: `You've successfully bought ${investment.trading_plan} plan for $${investment.amount} from wallet balance, check your investment portfolio as trading begins now.`,
             URL: '/dashboard/investment',
         })
 
@@ -50,7 +53,7 @@ exports.CreateInvestment = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `investment alert`,
-                    content: `Hello Admin, ${investmentUser} just made an investment of $${amount} ${trading_plan} plan, trading begins now.`,
+                    content: `Hello Admin, ${user.username} just made an investment of $${investment.amount} ${investment.trading_plan} plan, trading begins now.`,
                     URL: '/admin-controls/investments',
                 })
             })
@@ -104,8 +107,10 @@ exports.ClaimInvestment = async (req, res) => {
         const { invest_id } = req.body
         const investment = await Investment.findOne({ where: { id: invest_id } })
         if (!investment) return res.json({ status: 404, msg: `User investment not found` })
+
         const wallet = await Wallet.findOne({ where: { user: req.user } })
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+
         const ups = await Up.findOne({ where: { user: req.user } })
         if (!ups) return res.json({ status: 404, msg: `User ups not found` })
 

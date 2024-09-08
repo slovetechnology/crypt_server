@@ -1,13 +1,14 @@
-const sendMail = require('../config/emailConfig')
 const Notification = require('../models').notifications
 const User = require('../models').users
 const Kyc = require('../models').kyc
 const fs = require('fs')
-const slug = require('slug')
+const moment = require('moment')
+const Mailing = require('../config/emailDesign')
+const { webURL } = require('../utils/utils')
 
 
 
-exports.UserkYC = async (req, res) => {
+exports.UserKYC = async (req, res) => {
     try {
         const kyc = await Kyc.findOne({ where: { user: req.user } })
         if (!kyc) return res.json({ status: 400, msg: 'User kyc not found' })
@@ -18,15 +19,17 @@ exports.UserkYC = async (req, res) => {
     }
 }
 
-exports.Create_Update_Kyc = async (req, res) => {
+exports.Create_Update_KYC = async (req, res) => {
     try {
-        const { first_name, last_name, gender, marital_status, country, country_flag, date_of_birth, address, state, postal, phone_code, phone_number, id_number, kycUser } = req.body
-        if (!first_name || !last_name || !gender || !marital_status || !country || !country_flag || !date_of_birth || !address || !state || !postal || !phone_code || !phone_number || !id_number || !kycUser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { first_name, last_name, gender, marital_status, country, country_flag, date_of_birth, address, state, postal, phone_code, phone_number, id_number } = req.body
+        if (!first_name || !last_name || !gender || !marital_status || !country || !country_flag || !date_of_birth || !address || !state || !postal || !phone_code || !phone_number || !id_number) return res.json({ status: 404, msg: `Incomplete request found` })
 
         const filePath = './public/identity'
         const date = new Date()
         let imageName;
 
+        const user = await User.findOne({ where: { id: req.user } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
 
         const kyc = await Kyc.findOne({ where: { user: req.user } })
         if (!kyc) {
@@ -41,7 +44,7 @@ exports.Create_Update_Kyc = async (req, res) => {
             imageName = `${date.getTime()}.jpg`
             await image.mv(`${filePath}/${imageName}`)
 
-            await Kyc.create({
+            const kyc = await Kyc.create({
                 user: req.user,
                 valid_id: imageName,
                 first_name,
@@ -68,21 +71,29 @@ exports.Create_Update_Kyc = async (req, res) => {
 
             const admins = await User.findAll({ where: { role: 'admin' } })
             if (admins) {
+
                 admins.map(async ele => {
+
                     await Notification.create({
                         user: ele.id,
                         title: `KYC submission alert`,
-                        content: `Hello Admin, ${kycUser} just submitted KYC details, verify authenticity.`,
+                        content: `Hello Admin, ${user.username} just submitted KYC details, verify authenticity.`,
                         role: 'admin',
                         URL: '/admin-controls/users',
                     })
 
-                    const content = `<div font-size: 1rem;>Admin, ${kycUser} just submitted KYC details, verify authenticity.</div> `
-
-                    await sendMail({ subject: 'KYC Submission Alert', to: ele.email, html: content, text: content })
+                    Mailing({
+                        subject: `KYC Submission Alert`,
+                        eTitle: `New KYC uploaded`,
+                        eBody: `
+                          <div>Hello Admin, ${user.username} just submitted KYC details today ${moment(kyc.createdAt).format('DD-MM-yyyy')} / ${moment(kyc.createdAt).format('h:mm')} verify authenticity <a href='${webURL}/admin-controls/users' style="text-decoration: underline; color: #E96E28">here</a></div>
+                        `,
+                        account: ele
+                    })
                 })
             }
-        } else {
+        } 
+        else {
 
             const image = req?.files?.valid_id
 
@@ -120,9 +131,8 @@ exports.Create_Update_Kyc = async (req, res) => {
 
             await kyc.save()
 
-            const TheUser = await User.findOne({ where: { id: req.user } })
-            TheUser.kyc_verified = 'false'
-            await TheUser.save()
+            user.kyc_verified = 'false'
+            await user.save()
 
             await Notification.create({
                 user: req.user,
@@ -133,23 +143,28 @@ exports.Create_Update_Kyc = async (req, res) => {
 
             const admins = await User.findAll({ where: { role: 'admin' } })
             if (admins) {
+
                 admins.map(async ele => {
+
                     await Notification.create({
                         user: ele.id,
                         title: `KYC re-upload alert`,
-                        content: `Hello Admin, ${kycUser} just re-uploaded KYC details, verify authenticity.`,
+                        content: `Hello Admin, ${user.username} re-uploaded KYC details, verify authenticity.`,
                         role: 'admin',
                         URL: '/admin-controls/users',
                     })
 
-                    const content = `<div font-size: 1rem;>Admin, ${kycUser} just re-uploaded KYC details, verify authenticity.</div> `
-
-                    await sendMail({ subject: 'KYC Re-Upload Alert', to: ele.email, html: content, text: content })
+                    Mailing({
+                        subject: `KYC Re-upload Alert`,
+                        eTitle: `KYC re-uploaded`,
+                        eBody: `
+                          <div>Hello Admin, ${user.username} re-uploaded KYC details today ${moment(kyc.updatedAt).format('DD-MM-yyyy')} / ${moment(kyc.updatedAt).format('h:mm')}  verify authenticity <a href='${webURL}/admin-controls/users' style="text-decoration: underline; color: #E96E28">here</a></div>
+                        `,
+                        account: ele
+                    })
                 })
             }
         }
-
-        const user = await User.findByPk(req.user)
 
         const notifications = await Notification.findAll({
             where: { user: req.user },

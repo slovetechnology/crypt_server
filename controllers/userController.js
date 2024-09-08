@@ -13,11 +13,10 @@ const AdminStore = require('../models').admin_store
 const Crypto = require('../models').crypto
 const AdminWallet = require('../models').admin_wallets
 const jwt = require('jsonwebtoken')
-const sendMail = require('../config/emailConfig')
 const otpGenerator = require('otp-generator')
-const { eLogo, eFooter } = require('../config/utils')
-require('dotenv').config()
-
+const Mailing = require('../config/emailDesign')
+const moment = require('moment')
+const { webName, webShort, webURL } = require('../utils/utils')
 
 
 exports.CreateAccount = async (req, res) => {
@@ -78,7 +77,7 @@ exports.CreateAccount = async (req, res) => {
         await Notification.create({
             user: user.id,
             title: `welcome ${username}`,
-            content: 'Welcome to the AI Artification Intelligence Trading System where we focus on making crypto trading easy. Get started by making your first deposit.',
+            content: `Welcome to ${webName} where we focus on making crypto trading easy. Get started by making your first deposit.`,
             URL: '/dashboard/deposit',
         })
 
@@ -87,25 +86,37 @@ exports.CreateAccount = async (req, res) => {
             admins.map(async ele => {
                 await Notification.create({
                     user: ele.id,
-                    title: `${username} joins AI Algo`,
-                    content: `Hello Admin, you have a new user as ${full_name} joins the system.`,
+                    title: `${user.username} joins ${webShort}`,
+                    content: `Hello Admin, you have a new user as ${user.username} joins the system.`,
                     URL: '/admin-controls/users',
                 })
 
-                const emailcontent = `<div font-size: 1rem;>Hello admin, you have a new user as ${user.full_name} joins the AI Algorithm trading system.</div> `
+                Mailing({
+                    subject: 'New User Alert',
+                    eTitle: `New user joins ${webShort}`,
+                    eBody: `
+                     <div>Hello admin, you have a new user as ${user.username} joins ${webName} today ${moment(user.createdAt).format('DD-MM-yyyy')} / ${moment(user.createdAt).format('h:mm')}.</div> 
+                    `,
+                    account: ele,
+                })
 
-                await sendMail({ subject: 'New User Alert', to: ele.email, html: emailcontent, text: emailcontent })
             })
         }
 
         const otp = otpGenerator.generate(6, { specialChars: false })
-        const content = `
-        <div font-size: 2rem; text-align: center>Copy and paste your account verification code below:</div>
-        <div style="color: blue; font-size: 5rem; margin-top: 1rem;">${otp}</div>
-        `
+
+        Mailing({
+            subject: 'Email Verification Code',
+            eTitle: `Your email verification code`,
+            eBody: `
+             <div style="font-size: 2rem">${otp}</div>
+             <div style="margin-top: 1.5rem">This code can only be used once. If you didn't request a code, please ignore this email. Never share this code with anyone else.</div>
+            `,
+            account: user,
+        })
+
         user.resetcode = otp
         await user.save()
-        await sendMail({ subject: 'Email Verification Code', to: user.email, html: content, text: content })
 
         const adminStore = await AdminStore.findOne({
         })
@@ -124,18 +135,26 @@ exports.ResendOtpVerification = async (req, res) => {
     try {
         const { email } = req.body
         if (!email) return res.json({ status: 404, msg: 'Enter a valid email address' })
+
         const findAccount = await User.findOne({ where: { email: email } })
         if (!findAccount) return res.json({ status: 404, msg: `Account does not exists with us` })
+
         const otp = otpGenerator.generate(6, { specialChars: false })
-        const content = `
-        <div font-size: 2rem;>Copy and paste your account verification code below:</div>
-        <div style="color: blue; font-size: 5rem; margin-top: 1rem;">${otp}</div>
-        `
+
+        Mailing({
+            subject: 'Email Verification Code',
+            eTitle: `Your email verification code`,
+            eBody: `
+             <div style="font-size: 2rem">${otp}</div>
+             <div style="margin-top: 1.5rem">This code can only be used once. If you didn't request a code, please ignore this email. Never share this code with anyone else.</div>
+            `,
+            account: findAccount,
+        })
+
         findAccount.resetcode = otp
         await findAccount.save()
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Resend: Email Verification Code', to: findAccount.email, html: content, text: content })
 
-        return res.json({ status: 200, msg: 'otp code resent' })
+        return res.json({ status: 200, msg: 'OTP code resent' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -149,6 +168,7 @@ exports.ValidateOtp = async (req, res) => {
         if (!findAccount) return res.json({ status: 404, msg: `Account does not exists with us` })
 
         if (code !== findAccount.resetcode) return res.json({ status: 404, msg: 'Invalid code entered' })
+
         findAccount.resetcode = null
         findAccount.email_verified = 'true'
         await findAccount.save()
@@ -156,10 +176,14 @@ exports.ValidateOtp = async (req, res) => {
 
         const token = jwt.sign({ id: findAccount.id, role: findAccount.role }, process.env.JWT_SECRET, { expiresIn: '3h' })
 
-        const content = `<div font-size: 1rem;>Hello ${findAccount.full_name}, welcome to the AI Algo trading system where we focus on making cryptocurrency trading easy for everyone, get started by making your first deposit.</div> `
-
-        await sendMail({ from: 'support@secureinvest.org', subject: 'Welcome to AI Algo', to: findAccount.email, html: content, text: content })
-
+        Mailing({
+            subject: `Welcome To ${webShort}`,
+            eTitle: `Welcome ${findAccount.username}`,
+            eBody: `
+             <div>Welcome to ${webName} where we focus on making cryptocurrency trading easy. Get started by making your first <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">deposit</a>.</div>
+            `,
+            account: findAccount,
+        })
 
         return res.json({ status: 200, msg: findAccount, token })
     } catch (error) {
@@ -179,7 +203,7 @@ exports.LoginAccount = async (req, res) => {
         const findIfSuspended = await User.findOne({ where: { email: email, suspend: 'true' } })
         if (findIfSuspended) return res.json({ status: 400, msg: `Your account has been suspended` })
 
-        const token = jwt.sign({ id: findEmail.id, role: findEmail.role }, process.env.JWT_SECRET, { expiresIn: '3h' })
+        const token = jwt.sign({ id: findEmail.id, role: findEmail.role }, process.env.JWT_SECRET, { expiresIn: '5h' })
 
         return res.json({ status: 200, msg: `Login successful`, token })
     } catch (error) {
@@ -192,27 +216,25 @@ exports.FindAccountByEmail = async (req, res) => {
         const { email } = req.body
         if (!email) return res.json({ status: 404, msg: `Provide an email address` })
 
-        const user = await User.findOne({ where: { email: email } })
-        if (!user) return res.json({ status: 404, msg: `No account belongs to this email` })
+        const findAccount = await User.findOne({ where: { email: email } })
+        if (!findAccount) return res.json({ status: 404, msg: `No account belongs to this email` })
 
         const otp = otpGenerator.generate(6, { specialChars: false })
 
-        const content = `
-        <div style="padding-right: 1rem; padding-left: 1rem; margin-top: 2.5rem">
-          <div>${eLogo}</div>
-          <div style="padding-top: 1.2rem; padding-bottom: 1.2rem; border-top: 1px solid lightgrey; margin-top: 1rem">
-             <div style="font-size: 1.1rem; font-weight: bold">Your email verification code</div>
-             <div style="font-size: 2rem; margin-top: 1rem">${otp}</div>
+        Mailing({
+            subject: 'Email Verification Code',
+            eTitle: `Your email verification code`,
+            eBody: `
+             <div style="font-size: 2rem">${otp}</div>
              <div style="margin-top: 1.5rem">This code can only be used once. If you didn't request a code, please ignore this email. Never share this code with anyone else.</div>
-          </div>
-          <div>${eFooter}</div>
-        </div>
-        `
-        user.resetcode = otp
-        await user.save()
-        await sendMail({ subject: 'Email Verification Code', to: user.email, html: content, text: content })
+            `,
+            account: findAccount,
+        })
 
-        return res.json({ status: 200, msg: eFooter })
+        findAccount.resetcode = otp
+        await findAccount.save()
+
+        return res.json({ status: 200 })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -222,9 +244,12 @@ exports.VerifyOtpForPassword = async (req, res) => {
     try {
         const { email, code } = req.body
         if (!email || !code) return res.json({ status: 404, msg: 'Incomplete request found' })
+
         const findAccount = await User.findOne({ where: { email: email } })
         if (!findAccount) return res.json({ status: 404, msg: `Account does not exists with us` })
+
         if (code !== findAccount.resetcode) return res.json({ status: 404, msg: 'Invalid code entered' })
+
         findAccount.resetcode = null
         await findAccount.save()
 
@@ -238,9 +263,12 @@ exports.ChangePasswordOnRequest = async (req, res) => {
     try {
         const { email, password, confirm_password } = req.body
         if (!email || !password || !confirm_password) return res.json({ status: 404, msg: 'Incomplete request found' })
+
         if (confirm_password !== password) return res.json({ status: 400, msg: 'Password(s) do not match' })
+
         const findAccount = await User.findOne({ where: { email: email } })
         if (!findAccount) return res.json({ status: 404, msg: `Account does not exists with us` })
+
         findAccount.password = password
         await findAccount.save()
 
@@ -337,16 +365,18 @@ exports.UpdateProfile = async (req, res) => {
 
         const adminStore = await AdminStore.findOne({
         })
-        if (!adminStore) return res.json({ status: 400, msg: 'Admin Store not found' })
 
-        if (facebook) {
-            adminStore.facebook = facebook
-        }
-        if (instagram) {
-            adminStore.instagram = instagram
-        }
-        if (telegram) {
-            adminStore.telegram = telegram
+        if (adminStore) {
+
+            if (facebook) {
+                adminStore.facebook = facebook
+            }
+            if (instagram) {
+                adminStore.instagram = instagram
+            }
+            if (telegram) {
+                adminStore.telegram = telegram
+            }
         }
 
         await adminStore.save()
@@ -365,18 +395,23 @@ exports.ContactFromUsers = async (req, res) => {
 
         const admins = await User.findAll({ where: { role: 'admin' } })
 
-        const content = `
-        <div style="color: #E96E28">From: ${email}</div>
-        <div style="margin-top: 1rem; color: #E96E28">Message:</div>
-        <div style="margin-top: 0.5rem">${message}</div>
-        `
         if (admins) {
             admins.map(async ele => {
-                await sendMail({ subject: 'Contact From Ai Algo User', to: ele.email, html: content, text: content })
+
+                Mailing({
+                    subject: `Contact From ${webShort} User`,
+                    eTitle: `${webShort} user sends message`,
+                    eBody: `
+                     <div><span style="font-style: italic; font-size: 0.85rem">from:</span><span style="padding-left: 1rem">${email}</span></div>
+                     <div style="margin-top: 1rem; font-style: italic; font-size: 0.85rem">message:</div>
+                     <div style="margin-top: 0.5rem">${message}</div>
+                    `,
+                    account: ele,
+                })
             })
         }
 
-        return res.json({ status: 200, msg: 'Message successfully delivered' })
+        return res.json({ status: 200, msg: 'Message delivered' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -391,7 +426,6 @@ exports.DeleteAcount = async (req, res) => {
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'Account not found' })
         if (password !== user.password) return res.json({ status: 404, msg: `invalid password` })
-
 
         const imagePath = `./public/profiles/${user.image}`
         if (fs.existsSync(imagePath)) {
@@ -419,6 +453,12 @@ exports.DeleteAcount = async (req, res) => {
         })
 
         if (kyc) {
+
+            const kycIDPath = `./public/identity/${kyc.valid_id}`
+            if (fs.existsSync(kycIDPath)) {
+                fs.unlinkSync(kycIDPath)
+            }
+
             await kyc.destroy()
         }
 
@@ -474,17 +514,23 @@ exports.DeleteAcount = async (req, res) => {
 
         const admins = await User.findAll({ where: { role: 'admin' } })
         if (admins) {
+
             admins.map(async ele => {
                 await Notification.create({
                     user: ele.id,
-                    title: `${user.username} leaves AI Algo`,
-                    content: `Hello Admin, ${user.full_name} permanently deletes account on the system.`,
+                    title: `${user.username} leaves ${webShort}`,
+                    content: `Hello Admin, ${user.username} permanently deletes account on the system.`,
                     URL: '/admin-controls/users',
                 })
 
-                const emailcontent = `<div font-size: 1rem;>Hello admin, ${user.full_name} leaves the AI Algorithm trading as trader deletes account permanently.</div> `
-
-                await sendMail({ subject: 'User Leaves AI Algo', to: ele.email, html: emailcontent, text: emailcontent })
+                Mailing({
+                    subject: 'User Deletes Account',
+                    eTitle: `User leaves ${webShort}`,
+                    eBody: `
+                     <div>Hello admin, ${user.username} leaves ${webName} as trader deletes account permanently today ${moment(user.createdAt).format('DD-MM-yyyy')} / ${moment(user.createdAt).format('h:mm')}.</div> 
+                    `,
+                    account: ele,
+                })
             })
         }
 

@@ -1,51 +1,75 @@
-const sendMail = require('../config/emailConfig')
 const Withdrawal = require('../models').withdrawals
 const Notification = require('../models').notifications
 const Wallet = require('../models').wallets
 const User = require('../models').users
+const moment = require('moment')
+const { webURL } = require('../utils/utils')
+const Mailing = require('../config/emailDesign')
+
 
 exports.MakeWithdrawal = async (req, res) => {
     try {
 
-        const { amount, wallet_address, crypto, network, wthuser } = req.body
-        if (!amount || !wallet_address || !crypto || !network || !wthuser) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, wallet_address, crypto, network } = req.body
+        if (!amount || !wallet_address || !crypto || !network) return res.json({ status: 404, msg: `Incomplete request found` })
 
-        await Withdrawal.create({
+        const user = await User.findOne({ where: { id: req.user } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
+
+        const wallet = await Wallet.findOne({ where: { user: req.user } })
+        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+
+        if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
+
+        wallet.total_withdrawal += amount
+        wallet.balance -= amount
+        await wallet.save()
+
+        const withdrawal = await Withdrawal.create({
+            user: req.user,
             amount,
-            wallet_address,
             crypto,
             network,
-            user: req.user,
+            wallet_address,
         })
 
         await Notification.create({
             user: req.user,
             title: `withdrawal success`,
-            content: `Your withdrawal amount of $${amount} was successful, now processing.`,
+            content: `Your withdrawal amount of $${withdrawal.amount} was successful, now processing.`,
             URL: '/dashboard/withdraw?screen=2',
         })
 
         const admins = await User.findAll({ where: { role: 'admin' } })
         if (admins) {
+
             admins.map(async ele => {
+
                 await Notification.create({
                     user: ele.id,
                     title: `withdrawal alert`,
-                    content: `Hello Admin, ${wthuser} just made a withdrawal of $${amount}.`,
+                    content: `Hello Admin, ${user.username} just made a withdrawal of $${withdrawal.amount}.`,
                     URL: '/admin-controls/withdrawals',
                 })
 
-                const content = `<div font-size: 1rem;>Hello Admin, ${wthuser} just made a withdrawal of $${amount} for ${wallet_address} on ${network}.</div> `
-
-                await sendMail({ subject: 'Withdrawal Alert', to: ele.email, html: content, text: content })
+                Mailing({
+                    subject: `Withdrawal Alert`,
+                    eTitle: `New withdrawal made`,
+                    eBody: `
+                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${withdrawal.amount}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">from:</span><span style="padding-left: 1rem">${user.username}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">email:</span><span style="padding-left: 1rem">${user.email}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">user wallet:</span><span style="padding-left: 1rem">${withdrawal.wallet_address}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">crypto:</span><span style="padding-left: 1rem">${withdrawal.crypto}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">network:</span><span style="padding-left: 1rem">${withdrawal.network}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">date:</span><span style="padding-left: 1rem">${moment(withdrawal.createdAt).format('DD-MM-yyyy')}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">time:</span><span style="padding-left: 1rem">${moment(withdrawal.createdAt).format('h:mm')}</span></div>
+                     <div style="margin-top: 1rem">Update this withdrawal <a href='${webURL}/admin-controls/withdrawals' style="text-decoration: underline; color: #E96E28">here</a></div>
+                    `,
+                    account: ele,
+                })
             })
         }
-
-        const wallet = await Wallet.findOne({ where: { user: req.user } })
-        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
-        wallet.total_withdrawal += amount
-        wallet.balance -= amount
-        await wallet.save()
 
         const notifications = await Notification.findAll({
             where: { user: req.user },
