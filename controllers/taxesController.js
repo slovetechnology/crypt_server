@@ -2,6 +2,7 @@ const Mailing = require('../config/emailDesign')
 const Tax = require('../models').taxes
 const User = require('../models').users
 const Notification = require('../models').notifications
+const AdminWallet = require('../models').admin_wallets
 const moment = require('moment')
 const { webURL } = require('../utils/utils')
 
@@ -25,8 +26,13 @@ exports.PayTax = async (req, res) => {
         const { amount, crypto, network, deposit_address } = req.body
         if (!amount || !crypto || !network || !deposit_address) return res.json({ status: 404, msg: `Incomplete request found` })
 
+        if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
+
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
+
+        const adminWallet = await AdminWallet.findOne({ where: { crypto_name: crypto, network: network, address: deposit_address } })
+        if (!adminWallet) return res.json({ status: 404, msg: 'Invalid deposit address' })
 
         const tax = await Tax.create({
             user: req.user,
@@ -39,7 +45,7 @@ exports.PayTax = async (req, res) => {
         await Notification.create({
             user: req.user,
             title: `tax payment success`,
-            content: `Your tax payment amount of $${amount} was successful, pending confirmation.`,
+            content: `Your tax payment amount of $${tax.amount} was successful, pending confirmation.`,
             URL: '/dashboard/tax-payment?screen=2',
         })
 
@@ -55,7 +61,7 @@ exports.PayTax = async (req, res) => {
                     URL: '/admin-controls/taxes',
                 })
 
-                Mailing({
+                await Mailing({
                     subject: `Tax Payment Alert`,
                     eTitle: `New tax payment`,
                     eBody: `

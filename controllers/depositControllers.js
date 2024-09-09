@@ -2,6 +2,8 @@ const Mailing = require('../config/emailDesign')
 const Deposit = require('../models').deposits
 const Notification = require('../models').notifications
 const User = require('../models').users
+const AdminStore = require('../models').admin_store
+const AdminWallet = require('../models').admin_wallets
 const moment = require('moment')
 const { webURL } = require('../utils/utils')
 
@@ -12,8 +14,20 @@ exports.CreateDeposit = async (req, res) => {
         const { amount, crypto, network, deposit_address } = req.body
         if (!amount || !crypto || !network || !deposit_address) return res.json({ status: 404, msg: `Incomplete request found` })
 
+        if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
+
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
+
+        const adminStore = await AdminStore.findOne({
+        })
+
+        if (adminStore) {
+            if (amount < adminStore.deposit_minimum) return res.json({ status: 404, msg: `Minimum deposit amount is $${adminStore.deposit_minimum}` })
+        }
+
+        const adminWallet = await AdminWallet.findOne({ where: { crypto_name: crypto, network: network, address: deposit_address } })
+        if (!adminWallet) return res.json({ status: 404, msg: 'Invalid deposit address' })
 
         const deposit = await Deposit.create({
             user: req.user,
@@ -26,7 +40,7 @@ exports.CreateDeposit = async (req, res) => {
         await Notification.create({
             user: req.user,
             title: `deposit success`,
-            content: `Your deposit amount of $${amount} was successful, pending confirmation.`,
+            content: `Your deposit amount of $${deposit.amount} was successful, pending confirmation.`,
             URL: '/dashboard/deposit?screen=2',
         })
 
@@ -43,7 +57,7 @@ exports.CreateDeposit = async (req, res) => {
                     URL: '/admin-controls',
                 })
 
-                Mailing({
+                await Mailing({
                     subject: `Deposit Alert`,
                     eTitle: `New deposit payment`,
                     eBody: `
@@ -77,7 +91,7 @@ exports.CreateDeposit = async (req, res) => {
     }
 }
 
-exports.DepositsFromUser = async (req, res) => {
+exports.UserDeposits = async (req, res) => {
     try {
         const deposits = await Deposit.findAll({
             where: { user: req.user },

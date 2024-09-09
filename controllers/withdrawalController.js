@@ -13,13 +13,18 @@ exports.MakeWithdrawal = async (req, res) => {
         const { amount, wallet_address, crypto, network } = req.body
         if (!amount || !wallet_address || !crypto || !network) return res.json({ status: 404, msg: `Incomplete request found` })
 
+        if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
+
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
 
+        if (amount < user.withdrawal_minimum) return res.json({ status: 404, msg: `Minimum withdrawal amount is $${user.withdrawal_minimum}` })
         if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
+
+        if(user.email_verified === 'false' || user.kyc_verified === 'false') return res.json({ status: 404, msg: 'Complete your account verification to continue this withdrawal' })
 
         wallet.total_withdrawal += amount
         wallet.balance -= amount
@@ -52,7 +57,7 @@ exports.MakeWithdrawal = async (req, res) => {
                     URL: '/admin-controls/withdrawals',
                 })
 
-                Mailing({
+               await Mailing({
                     subject: `Withdrawal Alert`,
                     eTitle: `New withdrawal made`,
                     eBody: `
@@ -88,7 +93,7 @@ exports.MakeWithdrawal = async (req, res) => {
     }
 }
 
-exports.WithdrawalsFromUser = async (req, res) => {
+exports.UserWithdrawals = async (req, res) => {
     try {
         const withdrawals = await Withdrawal.findAll({
             where: { user: req.user },

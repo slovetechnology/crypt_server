@@ -3,8 +3,8 @@ const User = require('../models').users
 const Kyc = require('../models').kyc
 const fs = require('fs')
 const moment = require('moment')
-const Mailing = require('../config/emailDesign')
 const { webURL } = require('../utils/utils')
+const Mailing = require('../config/emailDesign')
 
 
 
@@ -24,12 +24,12 @@ exports.Create_Update_KYC = async (req, res) => {
         const { first_name, last_name, gender, marital_status, country, country_flag, date_of_birth, address, state, postal, phone_code, phone_number, id_number } = req.body
         if (!first_name || !last_name || !gender || !marital_status || !country || !country_flag || !date_of_birth || !address || !state || !postal || !phone_code || !phone_number || !id_number) return res.json({ status: 404, msg: `Incomplete request found` })
 
+        const user = await User.findOne({ where: { id: req.user } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
+
         const filePath = './public/identity'
         const date = new Date()
         let imageName;
-
-        const user = await User.findOne({ where: { id: req.user } })
-        if (!user) return res.json({ status: 404, msg: 'User not found' })
 
         const kyc = await Kyc.findOne({ where: { user: req.user } })
         if (!kyc) {
@@ -82,7 +82,7 @@ exports.Create_Update_KYC = async (req, res) => {
                         URL: '/admin-controls/users',
                     })
 
-                    Mailing({
+                    await Mailing({
                         subject: `KYC Submission Alert`,
                         eTitle: `New KYC uploaded`,
                         eBody: `
@@ -92,7 +92,7 @@ exports.Create_Update_KYC = async (req, res) => {
                     })
                 })
             }
-        } 
+        }
         else {
 
             const image = req?.files?.valid_id
@@ -120,8 +120,8 @@ exports.Create_Update_KYC = async (req, res) => {
             kyc.marital_status = marital_status
             kyc.country = country
             kyc.country_flag = country_flag,
-            kyc.postal = postal
             kyc.phone_code = phone_code
+            kyc.postal = postal
             kyc.phone_number = phone_number
             kyc.state = state
             kyc.address = address
@@ -154,7 +154,7 @@ exports.Create_Update_KYC = async (req, res) => {
                         URL: '/admin-controls/users',
                     })
 
-                    Mailing({
+                    await Mailing({
                         subject: `KYC Re-upload Alert`,
                         eTitle: `KYC re-uploaded`,
                         eBody: `

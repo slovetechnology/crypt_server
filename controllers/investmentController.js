@@ -2,6 +2,7 @@ const Investment = require('../models').investments
 const Notification = require('../models').notifications
 const Up = require('../models').ups
 const Wallet = require('../models').wallets
+const TradingPlans = require('../models').trading_plans
 const User = require('../models').users
 const moment = require('moment')
 
@@ -12,23 +13,30 @@ exports.CreateInvestment = async (req, res) => {
         const { amount, trading_plan, trading_plan_id, duration, duration_type } = req.body
         if (!amount || !trading_plan || !trading_plan_id || !duration || !duration_type) return res.json({ status: 404, msg: `Incomplete request found` })
 
+        if (isNaN(amount) || isNaN(trading_plan_id) || isNaN(duration)) return res.json({ status: 404, msg: `Enter valid numbers` })
+
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
+
+        const tradingPlan = await TradingPlans.findOne({ where: { id: trading_plan_id } })
+        if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
+
+        const wallet = await Wallet.findOne({ where: { user: req.user } })
+        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+
+        if (amount < tradingPlan.price_start) return res.json({ status: 404, msg: `Amount entered is lower than the plan price start` })
+        if (amount > tradingPlan.price_limit) return res.json({ status: 404, msg: `Amount entered is higher than the plan price limit` })
+        if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
 
         if (trading_plan === 'test run') {
             const TestRunInvestment = await Investment.findAll({ where: { user: req.user, trading_plan: 'test run' } })
             if (TestRunInvestment.length > 0) return res.json({ status: 404, msg: `Test run is one trial only` })
         }
 
-        const wallet = await Wallet.findOne({ where: { user: req.user } })
-        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
-
-        if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
-
         wallet.balance -= amount
         await wallet.save()
 
-        const topupDuration = moment().add(parseFloat(0.5), `${duration_type}`)
+        const topupTime = moment().add(parseFloat(1), `${duration_type}`)
         const endDate = moment().add(parseFloat(duration), `${duration_type}`)
 
         const investment = await Investment.create({
@@ -37,7 +45,7 @@ exports.CreateInvestment = async (req, res) => {
             trading_plan,
             trading_plan_id,
             endDate: `${endDate}`,
-            topupDuration: `${topupDuration}`
+            topupTime: `${topupTime}`
         })
 
         await Notification.create({

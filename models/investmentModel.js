@@ -10,6 +10,6 @@ module.exports = (sequelize, DataTypes) => {
         claim: {type: DataTypes.STRING, defaultValue: 'false'},
         rounds: {type: DataTypes.INTEGER, defaultValue: 0},
         endDate: {type: DataTypes.STRING},
-        topupDuration: {type: DataTypes.STRING},
+        topupTime: {type: DataTypes.STRING},
     })
 }
