@@ -71,7 +71,7 @@ exports.MakeWithdrawal = async (req, res) => {
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">time:</span><span style="padding-left: 1rem">${moment(withdrawal.createdAt).format('h:mm')}</span></div>
                      <div style="margin-top: 1rem">Update this withdrawal <a href='${webURL}/admin-controls/withdrawals' style="text-decoration: underline; color: #E96E28">here</a></div>
                     `,
-                    account: ele,
+                    account: ele.dataValues,
                 })
             })
         }

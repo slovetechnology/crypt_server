@@ -398,7 +398,7 @@ exports.UpdateTaxes = async (req, res) => {
                 content: message,
                 URL: '/dashboard/tax-payment',
             })
-            
+
             await Mailing({
                 subject: `Support Team`,
                 eTitle: `Tax notice`,
@@ -819,26 +819,25 @@ exports.DeleteCryptocurrency = async (req, res) => {
         const cryptocurrency = await Crypto.findOne({ where: { id: crypto_id } })
         if (!cryptocurrency) return res.json({ status: 404, msg: 'Crypto not found' })
 
-
         const CryptoImgPath = `./public/cryptocurrency/${cryptocurrency.crypto_img}`
         if (fs.existsSync(CryptoImgPath)) {
             fs.unlinkSync(CryptoImgPath)
         }
 
-        await cryptocurrency.destroy()
-
         const cryptoWallets = await AdminWallet.findAll({ where: { crypto: cryptocurrency.id } })
         if (cryptoWallets) {
-            cryptoWallets.map(async ele => {
+            for (const ele of cryptoWallets) {
 
-                const QrImgPath = `./public/adminWallets/${ele.qrcode_img}`
+                const QrImgPath = `./public/adminWallets/${ele.dataValues.qrcode_img}`
                 if (fs.existsSync(QrImgPath)) {
                     fs.unlinkSync(QrImgPath)
                 }
 
                 await ele.destroy()
-            })
+            }
         }
+
+        await cryptocurrency.destroy()
 
         return res.json({ status: 200, msg: 'Crypto deleted successfully' })
     } catch (error) {
@@ -872,7 +871,7 @@ exports.CreateAdminWallets = async (req, res) => {
         await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
 
         await AdminWallet.create({
-            crypto: crypto_id,
+            crypto: cryptocurrency.id,
             crypto_name,
             network,
             address,

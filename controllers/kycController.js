@@ -88,7 +88,7 @@ exports.Create_Update_KYC = async (req, res) => {
                         eBody: `
                           <div>Hello Admin, ${user.username} just submitted KYC details today ${moment(kyc.createdAt).format('DD-MM-yyyy')} / ${moment(kyc.createdAt).format('h:mm')} verify authenticity <a href='${webURL}/admin-controls/users' style="text-decoration: underline; color: #E96E28">here</a></div>
                         `,
-                        account: ele
+                        account: ele.dataValues
                     })
                 })
             }
@@ -160,7 +160,7 @@ exports.Create_Update_KYC = async (req, res) => {
                         eBody: `
                           <div>Hello Admin, ${user.username} re-uploaded KYC details today ${moment(kyc.updatedAt).format('DD-MM-yyyy')} / ${moment(kyc.updatedAt).format('h:mm')}  verify authenticity <a href='${webURL}/admin-controls/users' style="text-decoration: underline; color: #E96E28">here</a></div>
                         `,
-                        account: ele
+                        account: ele.dataValues
                     })
                 })
             }
