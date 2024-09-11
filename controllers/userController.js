@@ -299,6 +299,7 @@ exports.UpdateProfile = async (req, res) => {
             if (username !== user.username) {
                 const matchedSomeoneElse = await User.findOne({ where: { username: username } })
                 if (matchedSomeoneElse) return res.json({ status: 404, msg: 'Username unavailable' })
+                user.username = username
             }
         }
 
@@ -306,11 +307,24 @@ exports.UpdateProfile = async (req, res) => {
             if (email !== user.email) {
                 const matchedSomeoneElse = await User.findOne({ where: { email: email } })
                 if (matchedSomeoneElse) return res.json({ status: 404, msg: 'Email entered already exists' })
-
-                if (user.role === 'user') {
-                    user.email_verified = 'false'
-                }
+                user.email = email
+                user.email_verified = 'false'
             }
+        }
+
+        if (old_password) {
+            if (user.password !== old_password) return res.json({ status: 404, msg: 'Incorrect old password' })
+            if (!new_password) return res.json({ status: 404, msg: `Enter a new password` })
+        }
+
+        if (new_password) {
+            if (!old_password) return res.json({ status: 404, msg: `Enter your old password` })
+            if (new_password.length < 6) return res.json({ status: 404, msg: `New Password must be at least six characters` })
+            user.password = new_password
+        }
+
+        if (full_name) {
+            user.full_name = full_name
         }
 
         const image = req?.files?.image
@@ -335,30 +349,7 @@ exports.UpdateProfile = async (req, res) => {
             }
 
             await image.mv(`${filePath}/${imageName}`)
-        }
-
-        if (image) {
             user.image = imageName
-        }
-        if (full_name) {
-            user.full_name = full_name
-        }
-        if (username) {
-            user.username = username
-        }
-        if (email) {
-            user.email = email
-        }
-        if (old_password) {
-
-            if (user.password !== old_password) return res.json({ status: 404, msg: 'Enter your correct old password' })
-            if (!new_password) return res.json({ status: 404, msg: `Enter a new password` })
-        }
-        if (new_password) {
-
-            if (!old_password) return res.json({ status: 404, msg: `Enter your old password` })
-            if (new_password.length < 6) return res.json({ status: 404, msg: `New Password must be at least six characters` })
-            user.password = new_password
         }
 
         await user.save()

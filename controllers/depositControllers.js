@@ -11,8 +11,8 @@ const { webURL } = require('../utils/utils')
 exports.CreateDeposit = async (req, res) => {
     try {
 
-        const { amount, crypto, network, deposit_address } = req.body
-        if (!amount || !crypto || !network || !deposit_address) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, wallet_id} = req.body
+        if (!amount || !wallet_id) return res.json({ status: 404, msg: `Incomplete request found` })
 
         if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
 
@@ -26,15 +26,15 @@ exports.CreateDeposit = async (req, res) => {
             if (amount < adminStore.deposit_minimum) return res.json({ status: 404, msg: `Minimum deposit amount is $${adminStore.deposit_minimum}` })
         }
 
-        const adminWallet = await AdminWallet.findOne({ where: { crypto_name: crypto, network: network, address: deposit_address } })
+        const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id} })
         if (!adminWallet) return res.json({ status: 404, msg: 'Invalid deposit address' })
 
         const deposit = await Deposit.create({
             user: req.user,
             amount,
-            crypto,
-            network,
-            deposit_address
+            crypto: adminWallet.crypto_name,
+            network: adminWallet.network,
+            deposit_address: adminWallet.address
         })
 
         await Notification.create({

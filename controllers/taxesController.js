@@ -23,23 +23,23 @@ exports.UserTaxes = async (req, res) => {
 exports.PayTax = async (req, res) => {
     try {
 
-        const { amount, crypto, network, deposit_address } = req.body
-        if (!amount || !crypto || !network || !deposit_address) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, wallet_id } = req.body
+        if (!amount || !wallet_id) return res.json({ status: 404, msg: `Incomplete request found` })
 
         if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
 
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
 
-        const adminWallet = await AdminWallet.findOne({ where: { crypto_name: crypto, network: network, address: deposit_address } })
+        const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Invalid deposit address' })
 
         const tax = await Tax.create({
             user: req.user,
             amount,
-            crypto,
-            network,
-            deposit_address
+            crypto: adminWallet.crypto_name,
+            network: adminWallet.network,
+            deposit_address: adminWallet.address
         })
 
         await Notification.create({

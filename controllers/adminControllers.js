@@ -1119,9 +1119,10 @@ cron.schedule('* * * * *', async () => {
 
         const investmentUser = await User.findOne({ where: { id: ele.user } })
 
-        const tradingPlan = await TradingPlans.findOne({ where: { id: ele.trading_plan_id } })
+        const tradingPlan = await TradingPlans.findOne({ where: { id: ele.plan_id } })
 
         if (tradingPlan) {
+            
             const TotalProfit = ele.amount * tradingPlan.profit_return / 100
             const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
             const topupProfit = TotalProfit / tradingPlan.duration
