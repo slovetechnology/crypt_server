@@ -26,6 +26,7 @@ exports.CreateInvestment = async (req, res) => {
 
         if (amount < tradingPlan.price_start) return res.json({ status: 404, msg: `Amount entered is lower than the plan price start` })
         if (amount > tradingPlan.price_limit) return res.json({ status: 404, msg: `Amount entered is higher than the plan price limit` })
+            
         if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
 
         if (tradingPlan.title === 'test run') {

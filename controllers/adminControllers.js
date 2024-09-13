@@ -262,19 +262,15 @@ exports.UpdateWithdrawals = async (req, res) => {
                 await Notification.create({
                     user: withdrawal.user,
                     title: `withdrawal confirmed`,
-                    content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.wallet_address?.slice(0, 5)}....${withdrawal.wallet_address?.slice(-10)} has been successfully processed.`,
+                    content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.withdrawal_address?.slice(0, 5)}....${withdrawal.withdrawal_address?.slice(-10)} has been successfully processed.`,
                     URL: '/dashboard/withdraw?screen=2',
                 })
-
-                const content = `<div font-size: 1rem;></div> `
-
-                await sendMail({ subject: 'Withdrawal Confirmation', to: withdrawalUser.email, html: content, text: content })
 
                 await Mailing({
                     subject: `Withdrawal Confirmation`,
                     eTitle: `Withdrawal confirmed`,
                     eBody: `
-                      <div>Hello ${withdrawalUser.username}, your withdrawal of $${withdrawal.amount} made on ${moment(withdrawal.createdAt).format('DD-MM-yyyy')} / ${moment(withdrawal.createdAt).format('h:mm')} for wallet address ${withdrawal.wallet_address} has been confirmed.</div>
+                      <div>Hello ${withdrawalUser.username}, your withdrawal of $${withdrawal.amount} made on ${moment(withdrawal.createdAt).format('DD-MM-yyyy')} / ${moment(withdrawal.createdAt).format('h:mm')} for wallet address ${withdrawal.withdrawal_address} has been confirmed.</div>
                     `,
                     account: withdrawalUser
                 })
