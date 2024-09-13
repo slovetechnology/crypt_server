@@ -1013,7 +1013,7 @@ exports.UpdateTradingPlan = async (req, res) => {
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
 
-        const investments = await Investment.findAll({ where: { status: 'running', trading_plan_id: plan_id } })
+        const investments = await Investment.findAll({ where: { status: 'running', plan_id: plan_id } })
         if (investments.length > 0) return res.json({ status: 404, msg: 'Ongoing investment(s) on this plan' })
 
         if (title) {
