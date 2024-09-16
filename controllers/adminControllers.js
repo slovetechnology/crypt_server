@@ -100,7 +100,7 @@ exports.UpdateDeposits = async (req, res) => {
                                 await Notification.create({
                                     user: findMyReferral.id,
                                     title: `referral bonus`,
-                                    content: `Your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral ${depositUser.username} first deposit. Thank you for introducing more people to ${webShort}.`,
+                                    content: `Your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% commission of your referral ${depositUser.username} first deposit. Thank you for introducing more people to ${webShort}.`,
                                     URL: '/dashboard',
                                 })
 
@@ -108,7 +108,7 @@ exports.UpdateDeposits = async (req, res) => {
                                     subject: `Referral Bonus`,
                                     eTitle: `Referral bonus credited`,
                                     eBody: `
-                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}.</div>
+                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% commission of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}.</div>
                                     `,
                                     account: findMyReferral
                                 })
