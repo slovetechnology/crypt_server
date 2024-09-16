@@ -34,15 +34,17 @@ exports.CreateAccount = async (req, res) => {
         if (confirm_password !== password) return res.json({ status: 404, msg: `Passwords mismatch` })
 
         const findUsername = await User.findOne({ where: { username: username } })
-        if (findUsername) return res.json({ status: 400, msg: `Username already exists` })
+        if (findUsername) return res.json({ status: 400, msg: `Username unavailable` })
+
         const findEmail = await User.findOne({ where: { email: email } })
         if (findEmail) return res.json({ status: 400, msg: `Email already exists` })
+
         if (referral_code) {
             const findMyReferral = await User.findOne({ where: { referral_id: referral_code } })
             if (!findMyReferral) return res.json({ status: 404, msg: 'Invalid referral code' })
         }
 
-        const imageData = req?.files?.image
+        const profileImage = req?.files?.image
 
         const filePath = './public/profiles'
         if (!fs.existsSync(filePath)) {
@@ -50,14 +52,13 @@ exports.CreateAccount = async (req, res) => {
         }
 
         let imageName;
-        if (imageData) {
+        if (profileImage) {
             imageName = `${slug(username, '-')}.jpg`
-        }
-        if (imageData) {
-            await imageData.mv(`${filePath}/${imageName}`)
+            await profileImage.mv(`${filePath}/${imageName}`)
         }
 
         const myReferralId = 'AI_' + otpGenerator.generate(8, { specialChars: false })
+
         const user = await User.create({
             image: imageName,
             country_flag,
@@ -125,7 +126,7 @@ exports.CreateAccount = async (req, res) => {
             })
         }
 
-        return res.json({ status: 200, msg: 'Account created successfully' })
+        return res.json({ status: 200, msg: 'Account creation successful' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -164,6 +165,7 @@ exports.ValidateOtp = async (req, res) => {
     try {
         const { email, code } = req.body
         if (!email || !code) return res.json({ status: 404, msg: 'Incomplete request found' })
+
         const findAccount = await User.findOne({ where: { email: email } })
         if (!findAccount) return res.json({ status: 404, msg: `Account does not exists with us` })
 
@@ -174,7 +176,7 @@ exports.ValidateOtp = async (req, res) => {
         await findAccount.save()
 
 
-        const token = jwt.sign({ id: findAccount.id, role: findAccount.role }, process.env.JWT_SECRET, { expiresIn: '3h' })
+        const token = jwt.sign({ id: findAccount.id, role: findAccount.role }, process.env.JWT_SECRET, { expiresIn: '5h' })
 
         Mailing({
             subject: `Welcome To ${webShort}`,
@@ -194,10 +196,11 @@ exports.ValidateOtp = async (req, res) => {
 exports.LoginAccount = async (req, res) => {
     try {
         const { email, password } = req.body
-
         if (!email || !password) return res.json({ status: 404, msg: `Incomplete request` })
+
         const findEmail = await User.findOne({ where: { email: email } })
         if (!findEmail) return res.json({ status: 400, msg: `No account belongs to the email` })
+
         if (password !== findEmail.password) return res.json({ status: 404, msg: `Wrong password entered` })
 
         const findIfSuspended = await User.findOne({ where: { email: email, suspend: 'true' } })
@@ -272,7 +275,37 @@ exports.ChangePasswordOnRequest = async (req, res) => {
         findAccount.password = password
         await findAccount.save()
 
-        return res.json({ status: 200, msg: 'Password changed successfully' })
+        return res.json({ status: 200, msg: 'Password change successful' })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.ContactFromUsers = async (req, res) => {
+    try {
+        const { email, message } = req.body
+        if (!email) return res.json({ status: 404, msg: `Enter your email account` })
+        if (!message) return res.json({ status: 404, msg: `Enter a message` })
+
+        const admins = await User.findAll({ where: { role: 'admin' } })
+
+        if (admins) {
+            admins.map(async ele => {
+
+                Mailing({
+                    subject: `Contact From ${webShort} User`,
+                    eTitle: `${webShort} user sends message`,
+                    eBody: `
+                     <div><span style="font-style: italic; font-size: 0.85rem">from:</span><span style="padding-left: 1rem">${email}</span></div>
+                     <div style="margin-top: 1rem; font-style: italic; font-size: 0.85rem">message:</div>
+                     <div style="margin-top: 0.5rem">${message}</div>
+                    `,
+                    account: ele.dataValues,
+                })
+            })
+        }
+
+        return res.json({ status: 200, msg: 'Message delivered' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -282,6 +315,7 @@ exports.GetProfile = async (req, res) => {
     try {
         const user = await User.findByPk(req.user)
         if (!user) return res.json({ status: 404, msg: `Account not found` })
+
         return res.json({ status: 200, msg: user })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
@@ -378,44 +412,14 @@ exports.UpdateProfile = async (req, res) => {
     }
 }
 
-exports.ContactFromUsers = async (req, res) => {
-    try {
-        const { email, message } = req.body
-        if (!email) return res.json({ status: 404, msg: `Enter your email account` })
-        if (!message) return res.json({ status: 404, msg: `Enter your message` })
-
-        const admins = await User.findAll({ where: { role: 'admin' } })
-
-        if (admins) {
-            admins.map(async ele => {
-
-                Mailing({
-                    subject: `Contact From ${webShort} User`,
-                    eTitle: `${webShort} user sends message`,
-                    eBody: `
-                     <div><span style="font-style: italic; font-size: 0.85rem">from:</span><span style="padding-left: 1rem">${email}</span></div>
-                     <div style="margin-top: 1rem; font-style: italic; font-size: 0.85rem">message:</div>
-                     <div style="margin-top: 0.5rem">${message}</div>
-                    `,
-                    account: ele,
-                })
-            })
-        }
-
-        return res.json({ status: 200, msg: 'Message delivered' })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
-    }
-}
-
 exports.DeleteAcount = async (req, res) => {
     try {
-
         const { password } = req.body
         if (!password) return res.json({ status: 404, msg: `password is required` })
 
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'Account not found' })
+
         if (password !== user.password) return res.json({ status: 404, msg: `invalid password` })
 
         const imagePath = `./public/profiles/${user.image}`
@@ -527,7 +531,7 @@ exports.DeleteAcount = async (req, res) => {
 
         await user.destroy()
 
-        return res.json({ status: 200, msg: 'Account deleted successfully' })
+        return res.json({ status: 200, msg: 'Account deletion successful' })
 
     } catch (error) {
         return res.json({ status: 500, msg: error.message })

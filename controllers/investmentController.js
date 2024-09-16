@@ -115,7 +115,7 @@ exports.ClaimInvestment = async (req, res) => {
     try {
         const { invest_id } = req.body
         const investment = await Investment.findOne({ where: { id: invest_id } })
-        if (!investment) return res.json({ status: 404, msg: `User investment not found` })
+        if (!investment) return res.json({ status: 404, msg: `Investment not found` })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })

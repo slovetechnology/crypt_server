@@ -108,7 +108,7 @@ exports.UpdateDeposits = async (req, res) => {
                                     subject: `Referral Bonus`,
                                     eTitle: `Referral bonus credited`,
                                     eBody: `
-                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}</div>
+                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}.</div>
                                     `,
                                     account: findMyReferral
                                 })
@@ -495,7 +495,7 @@ exports.AdminCreateAccount = async (req, res) => {
                 subject: `Welcome To ${webShort}`,
                 eTitle: `Welcome ${user.username}`,
                 eBody: `
-                 <div>Welcome to ${webName} where we focus on making cryptocurrency trading easy. Get started by making your first <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">deposit</a>.</div>
+                 <div>Welcome to ${webName} where we focus on making cryptocurrency trading easy. Get started by making your first <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">deposit</a></div>
                 `,
                 account: user,
             })
@@ -782,11 +782,9 @@ exports.UpdateCryptocurrency = async (req, res) => {
             }
 
             await crypto_img.mv(`${filePath}/${cryptoImgName}`)
-        }
-
-        if (crypto_img) {
             cryptocurrency.crypto_img = cryptoImgName
         }
+
         if (crypto_name) {
             cryptocurrency.crypto_name = crypto_name
 
@@ -835,7 +833,7 @@ exports.DeleteCryptocurrency = async (req, res) => {
 
         await cryptocurrency.destroy()
 
-        return res.json({ status: 200, msg: 'Crypto deleted successfully' })
+        return res.json({ status: 200, msg: 'Cryptocurrency deleted successfully' })
     } catch (error) {
         return res.json({ status: 500, msg: error.message })
     }
@@ -923,11 +921,9 @@ exports.UpdateAdminWallet = async (req, res) => {
             }
 
             await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
-        }
-
-        if (qrcode_img) {
             adminWallet.qrcode_img = qrCodeImgName
         }
+
         if (crypto_name) {
             adminWallet.crypto_name = crypto_name
         }
