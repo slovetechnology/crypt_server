@@ -1,4 +1,3 @@
-require('dotenv').config()
 
 const express = require('express')
 const http = require('http')
@@ -9,12 +8,13 @@ const app = express()
 
 const port = process.env.PORT
 
-const server = http.createServer(app)
+// const server = http.createServer(app)
+require('dotenv').config()
 
+const CORSSERVERS = ["https://admin.socket.io", "http://localhost:5173"]
 app.use(cors({
-    origin: [ 'http://localhost:5173','http://localhost:5174',  'http://localhost:5175']
+    origin: CORSSERVERS
 }))
-
 app.use(express.json())
 
 app.use(fileUpload())
