@@ -1,5 +1,5 @@
 const { AllUsers, AllWithdrawals, UpdateWithdrawals, CreateAdminWallets, UpdateAdminWallet, DeleteWallet, GetAdminWallets, GetUserFigures, AllInvestments, UpdateInvestments, CreateTradingPlan, GetTradingPlans, UpdateTradingPlan, DeleteTradingPlan, AllDeposits, UpdateDeposits, GetAdminStore, UpdateAdminStore, AllTaxes, UpdateTaxes, AdminCreateAccount, UpdateUsers, UpdateKYC, CreateCryptocurrency, GetCryptocurrency, UpdateCryptocurrency, DeleteCryptocurrency } = require('../controllers/adminControllers')
-const { AdminMiddleware, AllMiddleware } = require('../middleware/auth')
+const { AdminMiddleware } = require('../middleware/auth')
 
 
 const router = require('express').Router()

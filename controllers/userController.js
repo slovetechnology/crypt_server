@@ -10,6 +10,7 @@ const Up = require('../models').ups
 const Tax = require('../models').taxes
 const Kyc = require('../models').kyc
 const AdminStore = require('../models').admin_store
+const TradingPlans = require('../models').trading_plans
 const Crypto = require('../models').crypto
 const AdminWallet = require('../models').admin_wallets
 const jwt = require('jsonwebtoken')
@@ -576,6 +577,17 @@ exports.Get_Admin_Cryptocurrency_And_Their_Wallets = async (req, res) => {
         })
 
         return res.json({ status: 200, msg: crypto_and_wallets })
+    } catch (error) {
+        res.json({ status: 500, msg: error.message })
+    }
+}
+
+exports.GetTestRunPlan = async (req, res) => {
+    try {
+        const tradingplan = await TradingPlans.findOne({ where: { title: 'test run' } })
+        if (!tradingplan) return res.json({ status: 400, msg: 'Test run plan does not exist' })
+
+        return res.json({ status: 200, msg: tradingplan })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
