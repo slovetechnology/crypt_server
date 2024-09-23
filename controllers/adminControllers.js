@@ -59,6 +59,7 @@ exports.UpdateDeposits = async (req, res) => {
 
                 const wallet = await Wallet.findOne({ where: { user: deposit.user } })
                 if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
+                    
                 wallet.total_deposit += deposit.amount
                 wallet.balance += deposit.amount
                 await wallet.save()
@@ -66,7 +67,7 @@ exports.UpdateDeposits = async (req, res) => {
                 await Notification.create({
                     user: deposit.user,
                     title: `deposit confirmed`,
-                    content: `Your deposit amount of $${deposit.amount} confirmed. Check your wallet for your available balance.`,
+                    content: `Your deposit amount of $${deposit.amount.toLocaleString()} confirmed. Check your wallet for your available balance.`,
                     URL: '/dashboard',
                 })
 
@@ -74,7 +75,7 @@ exports.UpdateDeposits = async (req, res) => {
                     subject: `Deposit Confirmation`,
                     eTitle: `Deposit confirmed`,
                     eBody: `
-                      <div>Hello ${depositUser.username}, your deposit amount of $${deposit.amount} made on ${moment(deposit.createdAt).format('DD-MM-yyyy')} / ${moment(deposit.createdAt).format('h:mm')} has been successfully confirmed. See your current balance <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">here</a></div>
+                      <div>Hello ${depositUser.username}, your deposit amount of $${deposit.amount.toLocaleString()} made on ${moment(deposit.createdAt).format('DD-MM-yyyy')} / ${moment(deposit.createdAt).format('h:mm')} has been successfully confirmed. See your current balance <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">here</a></div>
                     `,
                     account: depositUser
                 })
@@ -100,7 +101,7 @@ exports.UpdateDeposits = async (req, res) => {
                                 await Notification.create({
                                     user: findMyReferral.id,
                                     title: `referral bonus`,
-                                    content: `Your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% commission of your referral ${depositUser.username} first deposit. Thank you for introducing more people to ${webShort}.`,
+                                    content: `Your wallet has been credited with $${referralBonus.toLocaleString()}, ${adminStore.referral_bonus_percentage}% commission of your referral ${depositUser.username} first deposit. Thank you for introducing more people to ${webShort}.`,
                                     URL: '/dashboard',
                                 })
 
@@ -108,7 +109,7 @@ exports.UpdateDeposits = async (req, res) => {
                                     subject: `Referral Bonus`,
                                     eTitle: `Referral bonus credited`,
                                     eBody: `
-                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus}, ${adminStore.referral_bonus_percentage}% commission of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}.</div>
+                                      <div>Hello ${findMyReferral.username}, your wallet has been credited with $${referralBonus.toLocaleString()}, ${adminStore.referral_bonus_percentage}% commission of your referral <span style="font-style: italic">${depositUser.username}</span> first deposit. Thank you for introducing more people to ${webShort}.</div>
                                     `,
                                     account: findMyReferral
                                 })
@@ -123,7 +124,7 @@ exports.UpdateDeposits = async (req, res) => {
                 await Notification.create({
                     user: deposit.user,
                     title: `deposit failed`,
-                    content: `Your deposit amount of $${deposit.amount} confirmation failed. This deposit was not confirmed.`,
+                    content: `Your deposit amount of $${deposit.amount.toLocaleString()} confirmation failed. This deposit was not confirmed.`,
                     status: 'failed',
                     URL: '/dashboard/deposit?screen=2',
                 })
@@ -132,7 +133,7 @@ exports.UpdateDeposits = async (req, res) => {
                     subject: `Deposit Failed`,
                     eTitle: `Deposit failed`,
                     eBody: `
-                      <div>Hello ${depositUser.username}, your deposit amount of $${deposit.amount} made on ${moment(deposit.createdAt).format('DD-MM-yyyy')} / ${moment(deposit.createdAt).format('h:mm')} confirmation failed, this deposit was not confirmed. Did you make this deposit? File a complaint <a href='${webURL}/dashboard/feedback' style="text-decoration: underline; color: #E96E28">here</a></div>
+                      <div>Hello ${depositUser.username}, your deposit amount of $${deposit.amount.toLocaleString()} made on ${moment(deposit.createdAt).format('DD-MM-yyyy')} / ${moment(deposit.createdAt).format('h:mm')} confirmation failed, this deposit was not confirmed. Did you make this deposit? File a complaint <a href='${webURL}/dashboard/feedback' style="text-decoration: underline; color: #E96E28">here</a></div>
                     `,
                     account: depositUser
                 })
@@ -190,7 +191,7 @@ exports.UpdateInvestments = async (req, res) => {
                 await Notification.create({
                     user: investment.user,
                     title: `profit completed`,
-                    content: `Profits for your $${investment.amount} ${investment.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
+                    content: `Profits for your $${investment.amount.toLocaleString()} ${investment.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
                     URL: '/dashboard/investment',
                 })
 
@@ -198,7 +199,7 @@ exports.UpdateInvestments = async (req, res) => {
                     subject: `Investment Profit Completed`,
                     eTitle: `Investment profit completed`,
                     eBody: `
-                      <div>Hello ${investmentUser.username}, your investment of $${investment.amount} ${investment.trading_plan} plan made on ${moment(investment.createdAt).format('DD-MM-yyyy')} / ${moment(investment.createdAt).format('h:mm')} profit generation is completed. You can see total profit generated and claim to your wallet <a href='${webURL}/dashboard/investment' style="text-decoration: underline; color: #E96E28">here</a></div>
+                      <div>Hello ${investmentUser.username}, your investment of $${investment.amount.toLocaleString()} ${investment.trading_plan} plan made on ${moment(investment.createdAt).format('DD-MM-yyyy')} / ${moment(investment.createdAt).format('h:mm')} profit generation is completed. You can see total profit generated and claim to your wallet <a href='${webURL}/dashboard/investment' style="text-decoration: underline; color: #E96E28">here</a></div>
                     `,
                     account: investmentUser
                 })
@@ -262,7 +263,7 @@ exports.UpdateWithdrawals = async (req, res) => {
                 await Notification.create({
                     user: withdrawal.user,
                     title: `withdrawal confirmed`,
-                    content: `Your withdrawal amount of $${withdrawal.amount} for wallet address ${withdrawal.withdrawal_address?.slice(0, 5)}....${withdrawal.withdrawal_address?.slice(-10)} has been successfully processed.`,
+                    content: `Your withdrawal amount of $${withdrawal.amount.toLocaleString()} for wallet address ${withdrawal.withdrawal_address?.slice(0, 5)}....${withdrawal.withdrawal_address?.slice(-10)} has been successfully processed.`,
                     URL: '/dashboard/withdraw?screen=2',
                 })
 
@@ -270,7 +271,7 @@ exports.UpdateWithdrawals = async (req, res) => {
                     subject: `Withdrawal Confirmation`,
                     eTitle: `Withdrawal confirmed`,
                     eBody: `
-                      <div>Hello ${withdrawalUser.username}, your withdrawal of $${withdrawal.amount} made on ${moment(withdrawal.createdAt).format('DD-MM-yyyy')} / ${moment(withdrawal.createdAt).format('h:mm')} for wallet address ${withdrawal.withdrawal_address} has been confirmed.</div>
+                      <div>Hello ${withdrawalUser.username}, your withdrawal of $${withdrawal.amount.toLocaleString()} made on ${moment(withdrawal.createdAt).format('DD-MM-yyyy')} / ${moment(withdrawal.createdAt).format('h:mm')} for wallet address ${withdrawal.withdrawal_address} has been confirmed.</div>
                     `,
                     account: withdrawalUser
                 })
@@ -347,7 +348,7 @@ exports.UpdateTaxes = async (req, res) => {
                 await Notification.create({
                     user: tax.user,
                     title: `tax received`,
-                    content: `Your tax payment amount of $${tax.amount} has been received and the tax cleared.`,
+                    content: `Your tax payment amount of $${tax.amount.toLocaleString()} has been received and the tax cleared.`,
                     URL: '/dashboard/tax-payment?screen=2',
                 })
 
@@ -355,7 +356,7 @@ exports.UpdateTaxes = async (req, res) => {
                     subject: `Tax Received`,
                     eTitle: `Tax received`,
                     eBody: `
-                      <div>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} made on ${moment(tax.createdAt).format('DD-MM-yyyy')} / ${moment(tax.createdAt).format('h:mm')} has been received and the tax cleared.</div>
+                      <div>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount.toLocaleString()} made on ${moment(tax.createdAt).format('DD-MM-yyyy')} / ${moment(tax.createdAt).format('h:mm')} has been received and the tax cleared.</div>
                     `,
                     account: taxPayer
                 })
@@ -367,7 +368,7 @@ exports.UpdateTaxes = async (req, res) => {
                 await Notification.create({
                     user: tax.user,
                     title: `tax payment failed`,
-                    content: `Your tax payment amount of $${tax.amount} receival failed. This payment was not confirmed.`,
+                    content: `Your tax payment amount of $${tax.amount.toLocaleString()} receival failed. This payment was not confirmed.`,
                     status: 'failed',
                     URL: '/dashboard/tax-payment?screen=2',
                 })
@@ -376,7 +377,7 @@ exports.UpdateTaxes = async (req, res) => {
                     subject: `Tax Receival Failed`,
                     eTitle: `Tax payment failed`,
                     eBody: `
-                      <div>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount} made on ${moment(tax.createdAt).format('DD-MM-yyyy')} / ${moment(tax.createdAt).format('h:mm')} receival failed. This payment was not confirmed. Did you make this payment? File a complaint <a href='${webURL}/dashboard/feedback' style="text-decoration: underline; color: #E96E28">here</a></div>
+                      <div>Hello ${taxPayer.username}, your tax payment amount of $${tax.amount.toLocaleString()} made on ${moment(tax.createdAt).format('DD-MM-yyyy')} / ${moment(tax.createdAt).format('h:mm')} receival failed. This payment was not confirmed. Did you make this payment? File a complaint <a href='${webURL}/dashboard/feedback' style="text-decoration: underline; color: #E96E28">here</a></div>
                     `,
                     account: taxPayer
                 })
@@ -569,8 +570,17 @@ exports.UpdateUsers = async (req, res) => {
             await Notification.create({
                 user: user_id,
                 title: `wallet funded`,
-                content: `Your account has been funded with $${fundAmount}, check your balance.`,
+                content: `Your account has been funded with $${fundAmount.toLocaleString()}, check your balance.`,
                 URL: '/dashboard',
+            })
+
+            await Mailing({
+                subject: `Wallet Funded`,
+                eTitle: `Wallet funded`,
+                eBody: `
+                  <div>Hello ${user.username}, your wallet has been funded with $${fundAmount.toLocaleString()} today ${moment().format('DD-MM-yyyy')} / ${moment().format('h:mm')}. See your current balance <a href='${webURL}/dashboard/deposit' style="text-decoration: underline; color: #E96E28">here</a></div>
+                `,
+                account: user
             })
         }
 
@@ -599,6 +609,40 @@ exports.UpdateUsers = async (req, res) => {
         await user.save()
 
         return res.json({ status: 200, msg: 'Action successful' })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.ReactivateUsers = async (req, res) => {
+    try {
+        const { user_id } = req.body
+        if (!user_id) return res.json({ status: 404, msg: `Provide a user id` })
+
+        const user = await User.findOne({ where: { id: user_id } })
+        if (!user) return res.json({ status: 404, msg: 'User not found' })
+        if (user.account_deletion === 'false') return res.json({ status: 404, msg: `This account hasn't been deleted` })
+
+        user.account_deletion = 'false'
+        await user.save()
+
+        await Notification.create({
+            user: user.id,
+            title: `welcome back`,
+            content: `Welcome back to ${webShort} ${user.username}. Your account has been successfully reactivated and you can now trade on our platform again.`,
+            URL: '/dashboard/investment',
+        })
+
+        await Mailing({
+            subject: `Welcome Back To ${webShort}`,
+            eTitle: `Welcome Back ${user.username}`,
+            eBody: `
+             <div>Your account has been successfully reactivated, you can now login to your account and trade cryptocurrency on our platform again. Login <a href='${webURL}/login' style="text-decoration: underline; color: #E96E28">here</a></div>
+            `,
+            account: user,
+        })
+
+        return res.json({ status: 200, msg: 'Account reactivated' })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }
@@ -1114,7 +1158,7 @@ cron.schedule('* * * * *', async () => {
         const tradingPlan = await TradingPlans.findOne({ where: { id: ele.plan_id } })
 
         if (tradingPlan) {
-            
+
             const TotalProfit = ele.amount * tradingPlan.profit_return / 100
             const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
             const topupProfit = TotalProfit / tradingPlan.duration
@@ -1138,7 +1182,7 @@ cron.schedule('* * * * *', async () => {
                         await Notification.create({
                             user: ele.user,
                             title: `profit completed`,
-                            content: `Profits for your $${ele.amount} ${ele.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
+                            content: `Profits for your $${ele.amount.toLocaleString()} ${ele.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
                             URL: '/dashboard/investment',
                         })
 
@@ -1146,7 +1190,7 @@ cron.schedule('* * * * *', async () => {
                             subject: `Investment Profit Completed`,
                             eTitle: `Investment profit completed`,
                             eBody: `
-                              <div>Hello ${investmentUser.username}, your investment of $${ele.amount} ${ele.trading_plan} plan made on ${moment(ele.createdAt).format('DD-MM-yyyy')} / ${moment(ele.createdAt).format('h:mm')} profit generation is completed. You can see total profit generated and claim to your wallet <a href='${webURL}/dashboard/investment' style="text-decoration: underline; color: #E96E28">here</a></div>
+                              <div>Hello ${investmentUser.username}, your investment of $${ele.amount.toLocaleString()} ${ele.trading_plan} plan made on ${moment(ele.createdAt).format('DD-MM-yyyy')} / ${moment(ele.createdAt).format('h:mm')} profit generation is completed. You can see total profit generated and claim to your wallet <a href='${webURL}/dashboard/investment' style="text-decoration: underline; color: #E96E28">here</a></div>
                             `,
                             account: investmentUser
                         })

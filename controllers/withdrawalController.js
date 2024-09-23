@@ -46,7 +46,7 @@ exports.MakeWithdrawal = async (req, res) => {
         await Notification.create({
             user: req.user,
             title: `withdrawal success`,
-            content: `Your withdrawal amount of $${withdrawal.amount} was successful, now processing.`,
+            content: `Your withdrawal amount of $${withdrawal.amount.toLocaleString()} was successful, now processing.`,
             URL: '/dashboard/withdraw?screen=2',
         })
 
@@ -58,7 +58,7 @@ exports.MakeWithdrawal = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `withdrawal alert`,
-                    content: `Hello Admin, ${user.username} just made a withdrawal of $${withdrawal.amount}.`,
+                    content: `Hello Admin, ${user.username} just made a withdrawal of $${withdrawal.amount.toLocaleString()}.`,
                     URL: '/admin-controls/withdrawals',
                 })
 
@@ -66,7 +66,7 @@ exports.MakeWithdrawal = async (req, res) => {
                     subject: `Withdrawal Alert`,
                     eTitle: `New withdrawal made`,
                     eBody: `
-                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${withdrawal.amount}</span></div>
+                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${withdrawal.amount.toLocaleString()}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">from:</span><span style="padding-left: 1rem">${user.username}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">email:</span><span style="padding-left: 1rem">${user.email}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">crypto:</span><span style="padding-left: 1rem">${withdrawal.crypto}</span></div>

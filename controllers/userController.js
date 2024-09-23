@@ -1,14 +1,9 @@
 const slug = require('slug')
 const fs = require('fs')
 const User = require('../models').users
-const Investment = require('../models').investments
 const Notification = require('../models').notifications
-const Deposit = require('../models').deposits
-const Withdrawal = require('../models').withdrawals
 const Wallet = require('../models').wallets
 const Up = require('../models').ups
-const Tax = require('../models').taxes
-const Kyc = require('../models').kyc
 const AdminStore = require('../models').admin_store
 const TradingPlans = require('../models').trading_plans
 const Crypto = require('../models').crypto
@@ -204,8 +199,11 @@ exports.LoginAccount = async (req, res) => {
 
         if (password !== findEmail.password) return res.json({ status: 404, msg: `Wrong password entered` })
 
-        const findIfSuspended = await User.findOne({ where: { email: email, suspend: 'true' } })
+        const findIfSuspended = await User.findOne({ where: { id: findEmail.id, suspend: 'true' } })
         if (findIfSuspended) return res.json({ status: 400, msg: `Your account has been suspended` })
+
+        const findIfDeleted = await User.findOne({ where: { id: findEmail.id, account_deletion: 'true' } })
+        if (findIfDeleted) return res.json({ status: 400, msg: `This account was deleted, kindly contact support team for reactivation` })
 
         const token = jwt.sign({ id: findEmail.id, role: findEmail.role }, process.env.JWT_SECRET, { expiresIn: '5h' })
 
@@ -423,90 +421,8 @@ exports.DeleteAcount = async (req, res) => {
 
         if (password !== user.password) return res.json({ status: 404, msg: `invalid password` })
 
-        const imagePath = `./public/profiles/${user.image}`
-        if (fs.existsSync(imagePath)) {
-            fs.unlinkSync(imagePath)
-        }
-
-        const wallet = await Wallet.findOne({
-            where: { user: req.user }
-        })
-
-        if (wallet) {
-            await wallet.destroy()
-        }
-
-        const ups = await Up.findOne({
-            where: { user: req.user },
-        })
-
-        if (ups) {
-            await ups.destroy()
-        }
-
-        const kyc = await Kyc.findOne({
-            where: { user: req.user },
-        })
-
-        if (kyc) {
-
-            const kycIDPath = `./public/identity/${kyc.valid_id}`
-            if (fs.existsSync(kycIDPath)) {
-                fs.unlinkSync(kycIDPath)
-            }
-
-            await kyc.destroy()
-        }
-
-        const deposits = await Deposit.findAll({
-            where: { user: req.user },
-        })
-
-        if (deposits) {
-            deposits.map(async ele => {
-                await ele.destroy()
-            })
-        }
-
-        const investment = await Investment.findAll({
-            where: { user: req.user }
-        })
-
-        if (investment) {
-            investment.map(async ele => {
-                await ele.destroy()
-            })
-        }
-
-        const notifications = await Notification.findAll({
-            where: { user: req.user },
-        })
-
-        if (notifications) {
-            notifications.map(async ele => {
-                await ele.destroy()
-            })
-        }
-
-        const withdrawals = await Withdrawal.findAll({
-            where: { user: req.user },
-        })
-
-        if (withdrawals) {
-            withdrawals.map(async ele => {
-                await ele.destroy()
-            })
-        }
-
-        const taxes = await Tax.findAll({
-            where: { user: req.user },
-        })
-
-        if (taxes) {
-            taxes.map(async ele => {
-                await ele.destroy()
-            })
-        }
+        user.account_deletion = 'true'
+        await user.save()
 
         const admins = await User.findAll({ where: { role: 'admin' } })
         if (admins) {
@@ -515,7 +431,7 @@ exports.DeleteAcount = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `${user.username} leaves ${webShort}`,
-                    content: `Hello Admin, ${user.username} permanently deletes account on the system.`,
+                    content: `Hello Admin, ${user.username} leaves ${webName} as trader deletes account.`,
                     URL: '/admin-controls/users',
                 })
 
@@ -523,14 +439,12 @@ exports.DeleteAcount = async (req, res) => {
                     subject: 'User Deletes Account',
                     eTitle: `User leaves ${webShort}`,
                     eBody: `
-                     <div>Hello admin, ${user.username} leaves ${webName} as trader deletes account permanently today ${moment(user.createdAt).format('DD-MM-yyyy')} / ${moment(user.createdAt).format('h:mm')}.</div> 
+                     <div>Hello admin, ${user.username} leaves ${webName} as trader deletes account today ${moment().format('DD-MM-yyyy')} / ${moment().format('h:mm')}.</div> 
                     `,
                     account: ele.dataValues,
                 })
             })
         }
-
-        await user.destroy()
 
         return res.json({ status: 200, msg: 'Account deletion successful' })
 
