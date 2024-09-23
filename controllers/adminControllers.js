@@ -35,6 +35,7 @@ exports.AllDeposits = async (req, res) => {
 
             order: [['createdAt', 'DESC']]
         })
+
         return res.json({ status: 200, msg: deposits })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
@@ -324,6 +325,7 @@ exports.AllTaxes = async (req, res) => {
 
             order: [['createdAt', 'DESC']]
         })
+
         return res.json({ status: 200, msg: taxes })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
@@ -500,8 +502,9 @@ exports.AdminCreateAccount = async (req, res) => {
                 `,
                 account: user,
             })
+        }
 
-        } else {
+        if (role === 'admin') {
 
             const newAdmin = await User.create({
                 full_name,
@@ -522,6 +525,7 @@ exports.AdminCreateAccount = async (req, res) => {
                 URL: '/admin-controls/users',
             })
         }
+
 
         const admin = await User.findOne({ where: { id: req.user } })
         if (admin) {
@@ -621,7 +625,8 @@ exports.ReactivateUsers = async (req, res) => {
 
         const user = await User.findOne({ where: { id: user_id } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
-        if (user.account_deletion === 'false') return res.json({ status: 404, msg: `This account hasn't been deleted` })
+
+        if (user.account_deletion !== 'true') return res.json({ status: 404, msg: `This account hasn't been deleted` })
 
         user.account_deletion = 'false'
         await user.save()
@@ -657,22 +662,25 @@ exports.GetUserFigures = async (req, res) => {
         const user = await User.findOne({ where: { id: user_id } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
 
-        const userdeposit = await Deposit.findAll({
-            where: { user: user.id, status: 'confirmed' }
-        })
-
         const userFigures = {
             total_deposit: 0,
             wallet_balance: 0
         }
 
-        userdeposit.map(item => {
-            userFigures.total_deposit += item.amount
+        const userdeposits = await Deposit.findAll({
+            where: { user: user.id, status: 'confirmed' }
         })
 
+        if (userdeposits) {
+            userdeposits.map(item => {
+                userFigures.total_deposit += item.amount
+            })
+        }
+
         const wallet = await Wallet.findOne({ where: { user: user.id } })
-        if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
-        userFigures.wallet_balance = wallet.balance
+        if (wallet) {
+            userFigures.wallet_balance = wallet.balance
+        }
 
         return res.json({ status: 200, msg: userFigures })
     } catch (error) {
@@ -684,7 +692,7 @@ exports.UpdateKYC = async (req, res) => {
 
     try {
         const { kyc_id, status, message } = req.body
-        if (!kyc_id) return res.json({ status: 404, msg: `Invalid request` })
+        if (!kyc_id) return res.json({ status: 404, msg: `Provide a kyc id` })
 
         const kyc = await Kyc.findOne({ where: { id: kyc_id } })
         if (!kyc) return res.json({ status: 400, msg: 'KYC not found' })
@@ -797,7 +805,7 @@ exports.GetCryptocurrency = async (req, res) => {
 exports.UpdateCryptocurrency = async (req, res) => {
     try {
         const { crypto_name, crypto_id } = req.body
-        if (!crypto_id) return res.json({ status: 404, msg: `Provide Crypto id` })
+        if (!crypto_id) return res.json({ status: 404, msg: `Provide a crypto id` })
 
         const cryptocurrency = await Crypto.findOne({ where: { id: crypto_id } })
         if (!cryptocurrency) return res.json({ status: 404, msg: 'Crypto not found' })
@@ -855,7 +863,7 @@ exports.UpdateCryptocurrency = async (req, res) => {
 exports.DeleteCryptocurrency = async (req, res) => {
     try {
         const { crypto_id } = req.body
-        if (!crypto_id) return res.json({ status: 404, msg: `Provide Crypto id` })
+        if (!crypto_id) return res.json({ status: 404, msg: `Provide a crypto id` })
 
         const cryptocurrency = await Crypto.findOne({ where: { id: crypto_id } })
         if (!cryptocurrency) return res.json({ status: 404, msg: 'Crypto not found' })
@@ -939,7 +947,7 @@ exports.GetAdminWallets = async (req, res) => {
 exports.UpdateAdminWallet = async (req, res) => {
     try {
         const { network, address, wallet_id } = req.body
-        if (!wallet_id) return res.json({ status: 404, msg: `Provide Wallet id` })
+        if (!wallet_id) return res.json({ status: 404, msg: `Provide a wallet id` })
 
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
@@ -992,7 +1000,7 @@ exports.UpdateAdminWallet = async (req, res) => {
 exports.DeleteWallet = async (req, res) => {
     try {
         const { wallet_id } = req.body
-        if (!wallet_id) return res.json({ status: 404, msg: `Provide your Wallet id` })
+        if (!wallet_id) return res.json({ status: 404, msg: `Provide a wallet id` })
 
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
@@ -1050,7 +1058,7 @@ exports.GetTradingPlans = async (req, res) => {
 exports.UpdateTradingPlan = async (req, res) => {
     try {
         const { plan_id, title, price_start, price_limit, profit_return, plan_bonus, duration, duration_type } = req.body
-        if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
+        if (!plan_id) return res.json({ status: 404, msg: `Provide a trading plan id` })
         if (isNaN(price_start) || isNaN(price_limit) || isNaN(profit_return) || isNaN(plan_bonus) || isNaN(duration)) return res.json({ status: 404, msg: `Enter valid numbers` })
 
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
@@ -1059,7 +1067,7 @@ exports.UpdateTradingPlan = async (req, res) => {
         const matchingPlan = await TradingPlans.findOne({ where: { title: title } })
         if (matchingPlan) return res.json({ status: 404, msg: `${title} plan already exists` })
 
-        const investments = await Investment.findAll({ where: { plan_id: plan_id , status: 'running'} })
+        const investments = await Investment.findAll({ where: { plan_id: plan_id, status: 'running' } })
         if (investments.length > 0) return res.json({ status: 404, msg: 'Ongoing investment(s) on this plan' })
 
         if (title) {
@@ -1095,7 +1103,7 @@ exports.UpdateTradingPlan = async (req, res) => {
 exports.DeleteTradingPlan = async (req, res) => {
     try {
         const { plan_id } = req.body
-        if (!plan_id) return res.json({ status: 404, msg: `Provide trading plan id` })
+        if (!plan_id) return res.json({ status: 404, msg: `Provide a trading plan id` })
 
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
@@ -1112,6 +1120,7 @@ exports.GetAdminStore = async (req, res) => {
     try {
         const adminStore = await AdminStore.findOne({
         })
+        if (!adminStore) return res.json({ status: 400, msg: 'Admin store not found' })
 
         return res.json({ status: 200, msg: adminStore })
     } catch (error) {
@@ -1157,55 +1166,58 @@ cron.schedule('* * * * *', async () => {
 
     const investments = await Investment.findAll({ where: { status: 'running' } })
 
-    investments.map(async ele => {
+    if (investments) {
 
-        const investmentUser = await User.findOne({ where: { id: ele.user } })
+        investments.map(async ele => {
 
-        const tradingPlan = await TradingPlans.findOne({ where: { id: ele.plan_id } })
+            const investmentUser = await User.findOne({ where: { id: ele.user } })
 
-        if (tradingPlan) {
+            const tradingPlan = await TradingPlans.findOne({ where: { id: ele.plan_id } })
 
-            const TotalProfit = ele.amount * tradingPlan.profit_return / 100
-            const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
-            const topupProfit = TotalProfit / tradingPlan.duration
-            const topupBonus = TotalBonus / tradingPlan.duration
+            if (tradingPlan) {
 
-            if (moment().isSameOrAfter(new Date(ele.topupTime))) {
+                const TotalProfit = ele.amount * tradingPlan.profit_return / 100
+                const TotalBonus = ele.amount * tradingPlan.plan_bonus / tradingPlan.price_limit
+                const topupProfit = TotalProfit / tradingPlan.duration
+                const topupBonus = TotalBonus / tradingPlan.duration
 
-                if (ele.rounds < tradingPlan.duration) {
+                if (moment().isSameOrAfter(new Date(ele.topupTime))) {
 
-                    ele.profit += parseFloat(topupProfit.toFixed(1))
-                    ele.bonus += parseFloat(topupBonus.toFixed(1))
+                    if (ele.rounds < tradingPlan.duration) {
 
-                    const newTopupTime = moment().add(parseFloat(1), `${tradingPlan.duration_type}`)
-                    ele.topupTime = `${newTopupTime}`
+                        ele.profit += parseFloat(topupProfit.toFixed(1))
+                        ele.bonus += parseFloat(topupBonus.toFixed(1))
 
-                    ele.rounds += 1
+                        const newTopupTime = moment().add(parseFloat(1), `${tradingPlan.duration_type}`)
+                        ele.topupTime = `${newTopupTime}`
 
-                    if (ele.rounds >= tradingPlan.duration) {
-                        ele.status = 'completed'
+                        ele.rounds += 1
 
-                        await Notification.create({
-                            user: ele.user,
-                            title: `profit completed`,
-                            content: `Profits for your $${ele.amount.toLocaleString()} ${ele.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
-                            URL: '/dashboard/investment',
-                        })
+                        if (ele.rounds >= tradingPlan.duration) {
+                            ele.status = 'completed'
 
-                        await Mailing({
-                            subject: `Investment Profit Completed`,
-                            eTitle: `Investment profit completed`,
-                            eBody: `
+                            await Notification.create({
+                                user: ele.user,
+                                title: `profit completed`,
+                                content: `Profits for your $${ele.amount.toLocaleString()} ${ele.trading_plan} plan investment is completed. Check your investment portfolio to claim.`,
+                                URL: '/dashboard/investment',
+                            })
+
+                            await Mailing({
+                                subject: `Investment Profit Completed`,
+                                eTitle: `Investment profit completed`,
+                                eBody: `
                               <div>Hello ${investmentUser.username}, your investment of $${ele.amount.toLocaleString()} ${ele.trading_plan} plan made on ${moment(ele.createdAt).format('DD-MM-yyyy')} / ${moment(ele.createdAt).format('h:mm')} profit generation is completed. You can see total profit generated and claim to your wallet <a href='${webURL}/dashboard/investment' style="text-decoration: underline; color: #E96E28">here</a></div>
                             `,
-                            account: investmentUser
-                        })
-                    }
+                                account: investmentUser
+                            })
+                        }
 
-                    await ele.save()
+                        await ele.save()
+                    }
                 }
             }
-        }
 
-    })
+        })
+    }
 })

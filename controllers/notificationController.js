@@ -32,6 +32,7 @@ exports.UpdateAllNotifications = async (req, res) => {
             where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
+
         if (!notifications) return res.json({ status: 404, msg: 'Notifications not found' })
 
         notifications.map(async ele => {
@@ -48,17 +49,17 @@ exports.UpdateAllNotifications = async (req, res) => {
 exports.UpdateSingleNotifications = async (req, res) => {
     try {
         const { notification_id } = req.body
-        if (!notification_id) return res.json({ status: 404, msg: `Notification Id is required` })
+        if (!notification_id) return res.json({ status: 404, msg: `Notification id is required` })
+
         const notification = await Notification.findOne({ where: { id: notification_id } })
         if (!notification) return res.json({ status: 404, msg: 'Notification not found' })
-        if (notification.user !== req.user) return res.json({ status: 400, msg: 'You are not authorized to process this data' })
 
+        if (notification.user !== req.user) return res.json({ status: 400, msg: 'You are not authorized to process this data' })
 
         notification.read = 'true'
         await notification.save()
 
         return res.json({ status: 200, msg: 'Notification updated successfully' })
-
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -68,9 +69,11 @@ exports.DeleteNotification = async (req, res) => {
     try {
 
         const { notification_id } = req.body
-        if (!notification_id) return res.json({ status: 404, msg: `Notification Id is required` })
+        if (!notification_id) return res.json({ status: 404, msg: `Notification id is required` })
+
         const notification = await Notification.findOne({ where: { id: notification_id } })
         if (!notification) return res.json({ status: 404, msg: 'Notification not found' })
+
         if (notification.user !== req.user) return res.json({ status: 400, msg: 'You are not authorized to process this data' })
 
         await notification.destroy()

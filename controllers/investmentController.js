@@ -114,6 +114,8 @@ exports.UserUnclaimInvestments = async (req, res) => {
 exports.ClaimInvestment = async (req, res) => {
     try {
         const { invest_id } = req.body
+        if (!invest_id) return res.json({ status: 404, msg: `Provide an investment id` })
+
         const investment = await Investment.findOne({ where: { id: invest_id } })
         if (!investment) return res.json({ status: 404, msg: `Investment not found` })
 

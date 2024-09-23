@@ -7,19 +7,6 @@ const moment = require('moment')
 const { webURL } = require('../utils/utils')
 
 
-exports.UserTaxes = async (req, res) => {
-    try {
-        const taxes = await Tax.findAll({
-            where: { user: req.user },
-            order: [['createdAt', 'DESC']],
-        })
-
-        return res.json({ status: 200, msg: taxes })
-    } catch (error) {
-        return res.json({ status: 400, msg: error.message })
-    }
-}
-
 exports.PayTax = async (req, res) => {
     try {
 
@@ -90,6 +77,19 @@ exports.PayTax = async (req, res) => {
         })
 
         return res.json({ status: 200, msg: 'Tax payment success', notis: notifications, unread: unreadnotis })
+    } catch (error) {
+        return res.json({ status: 400, msg: error.message })
+    }
+}
+
+exports.UserTaxes = async (req, res) => {
+    try {
+        const taxes = await Tax.findAll({
+            where: { user: req.user },
+            order: [['createdAt', 'DESC']],
+        })
+
+        return res.json({ status: 200, msg: taxes })
     } catch (error) {
         return res.json({ status: 400, msg: error.message })
     }

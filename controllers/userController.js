@@ -200,10 +200,10 @@ exports.LoginAccount = async (req, res) => {
         if (password !== findEmail.password) return res.json({ status: 404, msg: `Wrong password entered` })
 
         const findIfSuspended = await User.findOne({ where: { id: findEmail.id, suspend: 'true' } })
-        if (findIfSuspended) return res.json({ status: 400, msg: `Your account has been suspended` })
+        if (findIfSuspended) return res.json({ status: 400, msg: `Your account has been suspended, kindly contact support team` })
 
         const findIfDeleted = await User.findOne({ where: { id: findEmail.id, account_deletion: 'true' } })
-        if (findIfDeleted) return res.json({ status: 400, msg: `This account was deleted, kindly contact support team for reactivation` })
+        if (findIfDeleted) return res.json({ status: 400, msg: `This account was deleted, kindly contact support team for possible reactivation` })
 
         const token = jwt.sign({ id: findEmail.id, role: findEmail.role }, process.env.JWT_SECRET, { expiresIn: '5h' })
 
@@ -216,7 +216,7 @@ exports.LoginAccount = async (req, res) => {
 exports.FindAccountByEmail = async (req, res) => {
     try {
         const { email } = req.body
-        if (!email) return res.json({ status: 404, msg: `Provide an email address` })
+        if (!email) return res.json({ status: 404, msg: `Provide your email address` })
 
         const findAccount = await User.findOne({ where: { email: email } })
         if (!findAccount) return res.json({ status: 404, msg: `No account belongs to this email` })
@@ -266,7 +266,7 @@ exports.ChangePasswordOnRequest = async (req, res) => {
         const { email, password, confirm_password } = req.body
         if (!email || !password || !confirm_password) return res.json({ status: 404, msg: 'Incomplete request found' })
 
-        if (confirm_password !== password) return res.json({ status: 400, msg: 'Password(s) do not match' })
+        if (confirm_password !== password) return res.json({ status: 400, msg: 'Passwords do not match' })
 
         const findAccount = await User.findOne({ where: { email: email } })
         if (!findAccount) return res.json({ status: 404, msg: `Account does not exists with us` })
@@ -466,14 +466,10 @@ exports.UserWallet = async (req, res) => {
 
 exports.UserUp = async (req, res) => {
     try {
-        let userUps = {}
         const ups = await Up.findOne({ where: { user: req.user } })
+        if (!ups) return res.json({ status: 400, msg: 'User ups not found' })
 
-        if (ups) {
-            userUps = ups
-        }
-
-        return res.json({ status: 200, msg: userUps })
+        return res.json({ status: 200, msg: ups })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
@@ -498,10 +494,10 @@ exports.Get_Admin_Cryptocurrency_And_Their_Wallets = async (req, res) => {
 
 exports.GetTestRunPlan = async (req, res) => {
     try {
-        const tradingplan = await TradingPlans.findOne({ where: { title: 'test run' } })
-        if (!tradingplan) return res.json({ status: 400, msg: 'Test run plan does not exist' })
+        const testRunPlan = await TradingPlans.findOne({ where: { title: 'test run' } })
+        if (!testRunPlan) return res.json({ status: 400, msg: 'Test run plan does not exist' })
 
-        return res.json({ status: 200, msg: tradingplan })
+        return res.json({ status: 200, msg: testRunPlan })
     } catch (error) {
         res.json({ status: 500, msg: error.message })
     }
