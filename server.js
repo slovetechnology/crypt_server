@@ -12,7 +12,7 @@ const port = process.env.PORT
 const server = http.createServer(app)
 
 app.use(cors({
-    origin: [ 'http://localhost:5173','http://localhost:5174',  'http://localhost:5175']
+    origin: [ 'http://localhost:5173','http://localhost:5174',  'https://aialgo.vercel.app']
 }))
 
 app.use(express.json())

@@ -11,8 +11,8 @@ const { webURL } = require('../utils/utils')
 exports.CreateDeposit = async (req, res) => {
     try {
 
-        const { amount, crypto, network, deposit_address } = req.body
-        if (!amount || !crypto || !network || !deposit_address) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, wallet_id} = req.body
+        if (!amount || !wallet_id) return res.json({ status: 404, msg: `Incomplete request found` })
 
         if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
 
@@ -26,21 +26,21 @@ exports.CreateDeposit = async (req, res) => {
             if (amount < adminStore.deposit_minimum) return res.json({ status: 404, msg: `Minimum deposit amount is $${adminStore.deposit_minimum}` })
         }
 
-        const adminWallet = await AdminWallet.findOne({ where: { crypto_name: crypto, network: network, address: deposit_address } })
+        const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id} })
         if (!adminWallet) return res.json({ status: 404, msg: 'Invalid deposit address' })
 
         const deposit = await Deposit.create({
             user: req.user,
             amount,
-            crypto,
-            network,
-            deposit_address
+            crypto: adminWallet.crypto_name,
+            network: adminWallet.network,
+            deposit_address: adminWallet.address
         })
 
         await Notification.create({
             user: req.user,
             title: `deposit success`,
-            content: `Your deposit amount of $${deposit.amount} was successful, pending confirmation.`,
+            content: `Your deposit amount of $${deposit.amount.toLocaleString()} was successful, pending confirmation.`,
             URL: '/dashboard/deposit?screen=2',
         })
 
@@ -53,7 +53,7 @@ exports.CreateDeposit = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `deposit alert`,
-                    content: `Hello Admin, ${user.username} just made a deposit of $${deposit.amount} with ${deposit.crypto} on ${deposit.network} network deposit address, please confirm transaction.`,
+                    content: `Hello Admin, ${user.username} just made a deposit of $${deposit.amount.toLocaleString()} with ${deposit.crypto} on ${deposit.network} network deposit address, please confirm transaction.`,
                     URL: '/admin-controls',
                 })
 
@@ -61,7 +61,7 @@ exports.CreateDeposit = async (req, res) => {
                     subject: `Deposit Alert`,
                     eTitle: `New deposit payment`,
                     eBody: `
-                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${deposit.amount}</span></div>
+                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${deposit.amount.toLocaleString()}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">crypto:</span><span style="padding-left: 1rem">${deposit.crypto}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">network:</span><span style="padding-left: 1rem">${deposit.network}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">deposit address:</span><span style="padding-left: 1rem">${deposit.deposit_address}</span></div>

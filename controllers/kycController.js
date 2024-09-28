@@ -109,11 +109,9 @@ exports.Create_Update_KYC = async (req, res) => {
 
                 imageName = `${date.getTime()}.jpg`
                 await image.mv(`${filePath}/${imageName}`)
-            }
-
-            if (image) {
                 kyc.valid_id = imageName
             }
+
             kyc.first_name = first_name
             kyc.last_name = last_name
             kyc.gender = gender
