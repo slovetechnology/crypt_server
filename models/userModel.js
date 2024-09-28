@@ -13,7 +13,8 @@ module.exports = (sequelize, DataTypes) => {
         resetcode: { type: DataTypes.STRING, allowNull: true },
         password: { type: DataTypes.STRING },
         withdrawal_minimum: { type: DataTypes.FLOAT, defaultValue: 100 },
+        my_referral: { type: DataTypes.STRING, allowNull: true},
         suspend: { type: DataTypes.STRING, defaultValue: 'false' },
-        my_referral: { type: DataTypes.STRING, allowNull: true}
+        account_deletion: { type: DataTypes.STRING, defaultValue: 'false' },
     })
 }

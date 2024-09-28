@@ -2,6 +2,7 @@ const Withdrawal = require('../models').withdrawals
 const Notification = require('../models').notifications
 const Wallet = require('../models').wallets
 const User = require('../models').users
+const AdminWallet = require('../models').admin_wallets
 const moment = require('moment')
 const { webURL } = require('../utils/utils')
 const Mailing = require('../config/emailDesign')
@@ -10,8 +11,8 @@ const Mailing = require('../config/emailDesign')
 exports.MakeWithdrawal = async (req, res) => {
     try {
 
-        const { amount, wallet_address, crypto, network } = req.body
-        if (!amount || !wallet_address || !crypto || !network) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, crypto, network, withdrawal_address } = req.body
+        if (!amount || !crypto || !network || !withdrawal_address) return res.json({ status: 404, msg: `Incomplete request found` })
 
         if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
 
@@ -22,9 +23,13 @@ exports.MakeWithdrawal = async (req, res) => {
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
 
         if (amount < user.withdrawal_minimum) return res.json({ status: 404, msg: `Minimum withdrawal amount is $${user.withdrawal_minimum}` })
+
         if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
 
-        if(user.email_verified === 'false' || user.kyc_verified === 'false') return res.json({ status: 404, msg: 'Complete your account verification to continue this withdrawal' })
+        const adminWallet = await AdminWallet.findOne({ where: { crypto_name: crypto, network: network } })
+        if (!adminWallet) return res.json({ status: 404, msg: 'Crypto/Network not supported' })
+
+        if (user.email_verified === 'false' || user.kyc_verified === 'false') return res.json({ status: 404, msg: 'Complete your account verification to continue this withdrawal' })
 
         wallet.total_withdrawal += amount
         wallet.balance -= amount
@@ -35,13 +40,13 @@ exports.MakeWithdrawal = async (req, res) => {
             amount,
             crypto,
             network,
-            wallet_address,
+            withdrawal_address,
         })
 
         await Notification.create({
             user: req.user,
             title: `withdrawal success`,
-            content: `Your withdrawal amount of $${withdrawal.amount} was successful, now processing.`,
+            content: `Your withdrawal amount of $${withdrawal.amount.toLocaleString()} was successful, now processing.`,
             URL: '/dashboard/withdraw?screen=2',
         })
 
@@ -53,20 +58,20 @@ exports.MakeWithdrawal = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `withdrawal alert`,
-                    content: `Hello Admin, ${user.username} just made a withdrawal of $${withdrawal.amount}.`,
+                    content: `Hello Admin, ${user.username} just made a withdrawal of $${withdrawal.amount.toLocaleString()}.`,
                     URL: '/admin-controls/withdrawals',
                 })
 
-               await Mailing({
+                await Mailing({
                     subject: `Withdrawal Alert`,
                     eTitle: `New withdrawal made`,
                     eBody: `
-                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${withdrawal.amount}</span></div>
+                     <div style="font-size: 0.85rem"><span style="font-style: italic">amount:</span><span style="padding-left: 1rem">$${withdrawal.amount.toLocaleString()}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">from:</span><span style="padding-left: 1rem">${user.username}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">email:</span><span style="padding-left: 1rem">${user.email}</span></div>
-                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">user wallet:</span><span style="padding-left: 1rem">${withdrawal.wallet_address}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">crypto:</span><span style="padding-left: 1rem">${withdrawal.crypto}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">network:</span><span style="padding-left: 1rem">${withdrawal.network}</span></div>
+                     <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">withdrawal address:</span><span style="padding-left: 1rem">${withdrawal.withdrawal_address}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">date:</span><span style="padding-left: 1rem">${moment(withdrawal.createdAt).format('DD-MM-yyyy')}</span></div>
                      <div style="font-size: 0.85rem; margin-top: 0.5rem"><span style="font-style: italic">time:</span><span style="padding-left: 1rem">${moment(withdrawal.createdAt).format('h:mm')}</span></div>
                      <div style="margin-top: 1rem">Update this withdrawal <a href='${webURL}/admin-controls/withdrawals' style="text-decoration: underline; color: #E96E28">here</a></div>

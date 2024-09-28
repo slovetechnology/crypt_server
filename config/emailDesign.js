@@ -29,7 +29,7 @@ const Mailing = async({ eTitle, eBody, account, subject }) => {
           </div>
         </div>
     `
-    await sendMail({ subject: subject, to: account.email, html: content, text: content })
+    await sendMail({ subject: subject, to: account.email, html: content, text: content, })
 }
 
 module.exports = Mailing

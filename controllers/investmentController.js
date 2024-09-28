@@ -10,15 +10,15 @@ const moment = require('moment')
 
 exports.CreateInvestment = async (req, res) => {
     try {
-        const { amount, trading_plan, trading_plan_id, duration, duration_type } = req.body
-        if (!amount || !trading_plan || !trading_plan_id || !duration || !duration_type) return res.json({ status: 404, msg: `Incomplete request found` })
+        const { amount, plan_id} = req.body
+        if (!amount || !plan_id) return res.json({ status: 404, msg: `Incomplete request found` })
 
-        if (isNaN(amount) || isNaN(trading_plan_id) || isNaN(duration)) return res.json({ status: 404, msg: `Enter valid numbers` })
+        if (isNaN(amount)) return res.json({ status: 404, msg: `Enter a valid number` })
 
         const user = await User.findOne({ where: { id: req.user } })
         if (!user) return res.json({ status: 404, msg: 'User not found' })
 
-        const tradingPlan = await TradingPlans.findOne({ where: { id: trading_plan_id } })
+        const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
@@ -26,9 +26,10 @@ exports.CreateInvestment = async (req, res) => {
 
         if (amount < tradingPlan.price_start) return res.json({ status: 404, msg: `Amount entered is lower than the plan price start` })
         if (amount > tradingPlan.price_limit) return res.json({ status: 404, msg: `Amount entered is higher than the plan price limit` })
+            
         if (amount > wallet.balance) return res.json({ status: 404, msg: 'Insufficient balance' })
 
-        if (trading_plan === 'test run') {
+        if (tradingPlan.title === 'test run') {
             const TestRunInvestment = await Investment.findAll({ where: { user: req.user, trading_plan: 'test run' } })
             if (TestRunInvestment.length > 0) return res.json({ status: 404, msg: `Test run is one trial only` })
         }
@@ -36,14 +37,14 @@ exports.CreateInvestment = async (req, res) => {
         wallet.balance -= amount
         await wallet.save()
 
-        const topupTime = moment().add(parseFloat(1), `${duration_type}`)
-        const endDate = moment().add(parseFloat(duration), `${duration_type}`)
+        const topupTime = moment().add(parseFloat(1), `${tradingPlan.duration_type}`)
+        const endDate = moment().add(parseFloat(tradingPlan.duration), `${tradingPlan.duration_type}`)
 
         const investment = await Investment.create({
             user: req.user,
             amount,
-            trading_plan,
-            trading_plan_id,
+            trading_plan: tradingPlan.title,
+            plan_id,
             endDate: `${endDate}`,
             topupTime: `${topupTime}`
         })
@@ -51,7 +52,7 @@ exports.CreateInvestment = async (req, res) => {
         await Notification.create({
             user: req.user,
             title: `investment success`,
-            content: `You've successfully bought ${investment.trading_plan} plan for $${investment.amount} from wallet balance, check your investment portfolio as trading begins now.`,
+            content: `You've successfully bought ${investment.trading_plan} plan for $${investment.amount.toLocaleString()} from wallet balance, check your investment portfolio as trading begins now.`,
             URL: '/dashboard/investment',
         })
 
@@ -61,7 +62,7 @@ exports.CreateInvestment = async (req, res) => {
                 await Notification.create({
                     user: ele.id,
                     title: `investment alert`,
-                    content: `Hello Admin, ${user.username} just made an investment of $${investment.amount} ${investment.trading_plan} plan, trading begins now.`,
+                    content: `Hello Admin, ${user.username} just made an investment of $${investment.amount.toLocaleString()} ${investment.trading_plan} plan, trading begins now.`,
                     URL: '/admin-controls/investments',
                 })
             })
@@ -113,8 +114,10 @@ exports.UserUnclaimInvestments = async (req, res) => {
 exports.ClaimInvestment = async (req, res) => {
     try {
         const { invest_id } = req.body
+        if (!invest_id) return res.json({ status: 404, msg: `Provide an investment id` })
+
         const investment = await Investment.findOne({ where: { id: invest_id } })
-        if (!investment) return res.json({ status: 404, msg: `User investment not found` })
+        if (!investment) return res.json({ status: 404, msg: `Investment not found` })
 
         const wallet = await Wallet.findOne({ where: { user: req.user } })
         if (!wallet) return res.json({ status: 404, msg: `User wallet not found` })
