@@ -203,7 +203,7 @@ exports.LoginAccount = async (req, res) => {
         if (findIfSuspended) return res.json({ status: 400, msg: `Your account has been suspended, kindly contact support team` })
 
         const findIfDeleted = await User.findOne({ where: { id: findEmail.id, account_deletion: 'true' } })
-        if (findIfDeleted) return res.json({ status: 400, msg: `This account was deleted, kindly contact support team for possible reactivation` })
+        if (findIfDeleted) return res.json({ status: 400, msg: `This account was deactivated, kindly contact support team for possible reactivation` })
 
         const token = jwt.sign({ id: findEmail.id, role: findEmail.role }, process.env.JWT_SECRET, { expiresIn: '5h' })
 
@@ -282,9 +282,8 @@ exports.ChangePasswordOnRequest = async (req, res) => {
 
 exports.ContactFromUsers = async (req, res) => {
     try {
-        const { email, message } = req.body
-        if (!email) return res.json({ status: 404, msg: `Enter your email account` })
-        if (!message) return res.json({ status: 404, msg: `Enter a message` })
+        const { email, title, message } = req.body
+        if (!email || !message) return res.json({ status: 404, msg: `Incomplete request found` })
 
         const admins = await User.findAll({ where: { role: 'admin' } })
 
@@ -296,6 +295,7 @@ exports.ContactFromUsers = async (req, res) => {
                     eTitle: `${webShort} user sends message`,
                     eBody: `
                      <div><span style="font-style: italic; font-size: 0.85rem">from:</span><span style="padding-left: 1rem">${email}</span></div>
+                     <div style="margin-top: 0.5rem"><span style="font-style: italic; font-size: 0.85rem;">title:</span><span style="padding-left: 1rem">${title ? title : 'no title'}</span></div>
                      <div style="margin-top: 1rem; font-style: italic; font-size: 0.85rem">message:</div>
                      <div style="margin-top: 0.5rem">${message}</div>
                     `,
