@@ -76,7 +76,7 @@ exports.DeleteNotification = async (req, res) => {
 
         if (notification.user !== req.user) return res.json({ status: 400, msg: 'You are not authorized to process this data' })
 
-        await notification.destroy()
+        // await notification.destroy()
 
         const notifications = await Notification.findAll({
             where: { user: req.user },

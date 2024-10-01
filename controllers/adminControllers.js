@@ -568,7 +568,7 @@ exports.UpdateUsers = async (req, res) => {
             const wallet = await Wallet.findOne({ where: { user: user.id } })
             if (!wallet) return res.json({ status: 404, msg: 'User wallet not found' })
 
-            wallet.balance += fundAmount
+            wallet.balance = fundAmount
             await wallet.save()
 
             await Notification.create({
@@ -906,25 +906,25 @@ exports.CreateAdminWallets = async (req, res) => {
         const matchingNetwork = await AdminWallet.findOne({ where: { crypto_name: crypto_name, network: network } })
         if (matchingNetwork) return res.json({ status: 404, msg: `${network} network already exists on ${crypto_name}` })
 
-        if (!req.files) return res.json({ status: 404, msg: `Qr scan code image is required` })
+        // if (!req.files) return res.json({ status: 404, msg: `Qr scan code image is required` })
 
-        const qrcode_img = req.files.qrcode_img
+        // const qrcode_img = req.files.qrcode_img
 
-        const filePath = './public/adminWallets'
-        if (!fs.existsSync(filePath)) {
-            fs.mkdirSync(filePath)
-        }
+        // const filePath = './public/adminWallets'
+        // if (!fs.existsSync(filePath)) {
+        //     fs.mkdirSync(filePath)
+        // }
 
-        const qrCodeImgName = `${slug(network, '-')}.jpg`
+        // const qrCodeImgName = `${slug(network, '-')}.jpg`
 
-        await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
+        // await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
 
         await AdminWallet.create({
             crypto: cryptocurrency.id,
             crypto_name,
             network,
             address,
-            qrcode_img: qrCodeImgName,
+            qrcode_img: null,
         })
 
         return res.json({ status: 200, msg: 'Wallet created successfully' })

@@ -30,6 +30,9 @@ db.kyc = require('./KycModel')(sequelize, DataTypes)
 db.crypto = require('./CryptoModel')(sequelize, DataTypes)
 
 
+db.sequelize.sync({ force: false }).then(() => console.log('Tables synced'))
+
+
 db.users.hasMany(db.deposits, { foreignKey: 'user', as: 'depositUser' })
 db.users.hasMany(db.notifications, { foreignKey: 'user', as: 'notiUser' })
 db.users.hasMany(db.withdrawals, { foreignKey: 'user', as: 'wthUser' })
@@ -46,10 +49,10 @@ db.investments.belongsTo(db.users, { foreignKey: 'user', as: 'investmentUser' })
 db.notifications.belongsTo(db.users, { foreignKey: 'user', as: 'notitUser' })
 db.withdrawals.belongsTo(db.users, { foreignKey: 'user', as: 'wthUser' })
 db.ups.belongsTo(db.users, { foreignKey: 'user', as: 'upUser' })
-db.wallets.belongsTo(db.users, { foreignKey: 'user', as: 'walletUser' })
+// db.wallets.belongsTo(db.users, { foreignKey: 'user', as: 'walletUser' })
 db.taxes.belongsTo(db.users, { foreignKey: 'user', as: 'taxPayer' })
 db.kyc.belongsTo(db.users, { foreignKey: 'user', as: 'kycUser' })
 
-db.sequelize.sync({ force: false }).then(() => console.log('Tables synced'))
+
 
 module.exports = db

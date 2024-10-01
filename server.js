@@ -11,7 +11,7 @@ const port = 5005 || process.env.PORT
 // const server = http.createServer(app)
 require('dotenv').config()
 
-const CORSSERVERS = ["https://admin.socket.io", "http://localhost:5173"]
+const CORSSERVERS = ["https://admin.socket.io", "http://localhost:5173", "https://cryptovilles.com", "https://www.cryptovilles.com"]
 app.use(cors({
     origin: CORSSERVERS
 }))
@@ -30,6 +30,5 @@ app.use('/api/withdraw', require('./routes/withdrawalRoute'))
 app.use('/api/investment', require('./routes/investmentRoute'))
 app.use('/api/tax', require('./routes/taxRoute'))
 app.use('/api/kyc', require('./routes/kycRoute'))
-
 
 app.listen(port, () => console.log(`Server running on http://localhost:${port}`))
