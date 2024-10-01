@@ -65,6 +65,9 @@ exports.UpdateDeposits = async (req, res) => {
                 wallet.balance += deposit.amount
                 await wallet.save()
 
+                deposit.status = status
+                await deposit.save()
+
                 await Notification.create({
                     user: deposit.user,
                     title: `deposit confirmed`,
@@ -81,8 +84,8 @@ exports.UpdateDeposits = async (req, res) => {
                     account: depositUser
                 })
 
-                const UserDeposits = await Deposit.findAll({ where: { user: deposit.user } })
-                if (UserDeposits.length === 1) {
+                const UserConfirmedDeposits = await Deposit.findAll({ where: { user: deposit.user, status: 'confirmed' } })
+                if (UserConfirmedDeposits.length === 1) {
                     const findMyReferral = await User.findOne({ where: { referral_id: depositUser.my_referral } })
 
                     if (findMyReferral) {
@@ -122,6 +125,9 @@ exports.UpdateDeposits = async (req, res) => {
 
             if (status === 'failed') {
 
+                deposit.status = status
+                await deposit.save()
+
                 await Notification.create({
                     user: deposit.user,
                     title: `deposit failed`,
@@ -138,11 +144,7 @@ exports.UpdateDeposits = async (req, res) => {
                     `,
                     account: depositUser
                 })
-
             }
-
-            deposit.status = status
-            await deposit.save()
         }
 
         return res.json({ status: 200, msg: 'Deposit updated successfully' })
@@ -539,12 +541,12 @@ exports.AdminCreateAccount = async (req, res) => {
         }
 
         const notifications = await Notification.findAll({
-            where: { role: 'admin' },
+            where: { user: req.user },
             order: [['createdAt', 'DESC']],
         })
 
         const unreadNotifications = await Notification.findAll({
-            where: { role: 'admin', read: 'false' },
+            where: { user: req.user, read: 'false' },
         })
 
         return res.json({ status: 200, msg: `Account created successfully`, notis: notifications, unread: unreadNotifications })
@@ -810,8 +812,10 @@ exports.UpdateCryptocurrency = async (req, res) => {
         const cryptocurrency = await Crypto.findOne({ where: { id: crypto_id } })
         if (!cryptocurrency) return res.json({ status: 404, msg: 'Crypto not found' })
 
-        const matchingCrypto = await Crypto.findOne({ where: { crypto_name: crypto_name } })
-        if (matchingCrypto) return res.json({ status: 404, msg: `${crypto_name} already exists` })
+        if (cryptocurrency.crypto_name !== crypto_name) {
+            const matchingCrypto = await Crypto.findOne({ where: { crypto_name: crypto_name } })
+            if (matchingCrypto) return res.json({ status: 404, msg: `${crypto_name} already exists` })
+        }
 
         const crypto_img = req?.files?.crypto_img
 
@@ -876,12 +880,6 @@ exports.DeleteCryptocurrency = async (req, res) => {
         const cryptoWallets = await AdminWallet.findAll({ where: { crypto: cryptocurrency.id } })
         if (cryptoWallets) {
             for (const ele of cryptoWallets) {
-
-                const QrImgPath = `./public/adminWallets/${ele.dataValues.qrcode_img}`
-                if (fs.existsSync(QrImgPath)) {
-                    fs.unlinkSync(QrImgPath)
-                }
-
                 await ele.destroy()
             }
         }
@@ -906,25 +904,11 @@ exports.CreateAdminWallets = async (req, res) => {
         const matchingNetwork = await AdminWallet.findOne({ where: { crypto_name: crypto_name, network: network } })
         if (matchingNetwork) return res.json({ status: 404, msg: `${network} network already exists on ${crypto_name}` })
 
-        // if (!req.files) return res.json({ status: 404, msg: `Qr scan code image is required` })
-
-        // const qrcode_img = req.files.qrcode_img
-
-        // const filePath = './public/adminWallets'
-        // if (!fs.existsSync(filePath)) {
-        //     fs.mkdirSync(filePath)
-        // }
-
-        // const qrCodeImgName = `${slug(network, '-')}.jpg`
-
-        // await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
-
         await AdminWallet.create({
             crypto: cryptocurrency.id,
             crypto_name,
             network,
             address,
-            qrcode_img: null,
         })
 
         return res.json({ status: 200, msg: 'Wallet created successfully' })
@@ -952,34 +936,9 @@ exports.UpdateAdminWallet = async (req, res) => {
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
 
-        const matchingNetwork = await AdminWallet.findOne({ where: { crypto_name: adminWallet.crypto_name, network: network } })
-        if (matchingNetwork) return res.json({ status: 404, msg: `${network} network already exists on ${adminWallet.crypto_name}` })
-
-        const qrcode_img = req?.files?.qrcode_img
-
-        let qrCodeImgName;
-
-        const filePath = './public/adminWallets'
-        const currentQrCodeImgPath = `${filePath}/${adminWallet.qrcode_img}`
-
-        if (qrcode_img) {
-
-            if (fs.existsSync(currentQrCodeImgPath)) {
-                fs.unlinkSync(currentQrCodeImgPath)
-            }
-
-            if (!fs.existsSync(filePath)) {
-                fs.mkdirSync(filePath)
-            }
-
-            if (network) {
-                qrCodeImgName = `${slug(network, '-')}.jpg`
-            } else {
-                qrCodeImgName = `${slug(adminWallet.network, '-')}.jpg`
-            }
-
-            await qrcode_img.mv(`${filePath}/${qrCodeImgName}`)
-            adminWallet.qrcode_img = qrCodeImgName
+        if (adminWallet.network !== network) {
+            const matchingNetwork = await AdminWallet.findOne({ where: { crypto_name: adminWallet.crypto_name, network: network } })
+            if (matchingNetwork) return res.json({ status: 404, msg: `${network} network already exists on ${adminWallet.crypto_name}` })
         }
 
         if (network) {
@@ -1004,11 +963,6 @@ exports.DeleteWallet = async (req, res) => {
 
         const adminWallet = await AdminWallet.findOne({ where: { id: wallet_id } })
         if (!adminWallet) return res.json({ status: 404, msg: 'Wallet not found' })
-
-        const QrImgPath = `./public/adminWallets/${adminWallet.qrcode_img}`
-        if (fs.existsSync(QrImgPath)) {
-            fs.unlinkSync(QrImgPath)
-        }
 
         await adminWallet.destroy()
 
@@ -1064,8 +1018,10 @@ exports.UpdateTradingPlan = async (req, res) => {
         const tradingPlan = await TradingPlans.findOne({ where: { id: plan_id } })
         if (!tradingPlan) return res.json({ status: 404, msg: 'Trading plan not found' })
 
-        const matchingPlan = await TradingPlans.findOne({ where: { title: title } })
-        if (matchingPlan) return res.json({ status: 404, msg: `${title} plan already exists` })
+        if (tradingPlan.title !== title) {
+            const matchingPlan = await TradingPlans.findOne({ where: { title: title } })
+            if (matchingPlan) return res.json({ status: 404, msg: `${title} plan already exists` })
+        }
 
         const investments = await Investment.findAll({ where: { plan_id: plan_id, status: 'running' } })
         if (investments.length > 0) return res.json({ status: 404, msg: 'Ongoing investment(s) on this plan' })
