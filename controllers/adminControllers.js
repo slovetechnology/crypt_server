@@ -65,6 +65,9 @@ exports.UpdateDeposits = async (req, res) => {
                 wallet.balance += deposit.amount
                 await wallet.save()
 
+                deposit.status = status
+                await deposit.save()
+
                 await Notification.create({
                     user: deposit.user,
                     title: `deposit confirmed`,
@@ -81,8 +84,8 @@ exports.UpdateDeposits = async (req, res) => {
                     account: depositUser
                 })
 
-                const UserDeposits = await Deposit.findAll({ where: { user: deposit.user } })
-                if (UserDeposits.length === 1) {
+                const UserConfirmedDeposits = await Deposit.findAll({ where: { user: deposit.user, status: 'confirmed' } })
+                if (UserConfirmedDeposits.length === 1) {
                     const findMyReferral = await User.findOne({ where: { referral_id: depositUser.my_referral } })
 
                     if (findMyReferral) {
@@ -122,6 +125,9 @@ exports.UpdateDeposits = async (req, res) => {
 
             if (status === 'failed') {
 
+                deposit.status = status
+                await deposit.save()
+
                 await Notification.create({
                     user: deposit.user,
                     title: `deposit failed`,
@@ -138,11 +144,7 @@ exports.UpdateDeposits = async (req, res) => {
                     `,
                     account: depositUser
                 })
-
             }
-
-            deposit.status = status
-            await deposit.save()
         }
 
         return res.json({ status: 200, msg: 'Deposit updated successfully' })
